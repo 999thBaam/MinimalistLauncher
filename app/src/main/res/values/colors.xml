@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Grayscale Palette: OLED-friendly, low stimulation -->
+    <color name="background">#000000</color>           <!-- Pure Black -->
+    <color name="primaryText">#E0E0E0</color>          <!-- Light Grey -->
+    <color name="secondaryText">#808080</color>        <!-- Dim Grey -->
+    <color name="accent">#404040</color>               <!-- Dark Grey (selection) -->
+    <color name="divider">#1A1A1A</color>              <!-- Subtle divider -->
+    <color name="searchBackground">#0D0D0D</color>     <!-- Slightly lighter than black -->
+</resources>

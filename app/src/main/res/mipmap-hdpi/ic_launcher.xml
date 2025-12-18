@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback icon for older devices: Simple grey circle on black -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Black background -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M0,0h48v48H0z"/>
+    <!-- Grey circle -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M24,24m-16,0a16,16 0,1 1,32 0a16,16 0,1 1,-32 0"/>
+</vector>

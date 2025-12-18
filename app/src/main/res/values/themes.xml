@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Minimalist Theme: Pure grayscale, no color stimulation -->
+    <style name="Theme.MinimalistLauncher" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Pure black background -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:windowBackground">@color/background</item>
+        
+        <!-- Grayscale accents -->
+        <item name="colorPrimary">@color/primaryText</item>
+        <item name="colorOnPrimary">@color/background</item>
+        <item name="colorSecondary">@color/accent</item>
+        
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">@color/primaryText</item>
+        <item name="android:textColorSecondary">@color/secondaryText</item>
+        
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        
+        <!-- Remove ripple color stimulation -->
+        <item name="colorControlHighlight">@color/accent</item>
+    </style>
+    
+    <!-- Grayscale dialog for setup prompts -->
+    <style name="MinimalistDialog" parent="Theme.Material3.Dark.Dialog.Alert">
+        <item name="android:background">@color/accent</item>
+        <item name="android:textColorPrimary">@color/primaryText</item>
+        <item name="android:textColorSecondary">@color/secondaryText</item>
+        <item name="colorPrimary">@color/primaryText</item>
+    </style>
+</resources>
