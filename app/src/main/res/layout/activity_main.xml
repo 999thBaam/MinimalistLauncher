@@ -8,15 +8,34 @@
     android:background="@color/background"
     tools:context=".MainActivity">
 
+    <!-- SETTINGS BUTTON -->
+    <ImageView
+        android:id="@+id/settingsButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="Settings"
+        android:focusable="true"
+        android:padding="12dp"
+        android:src="@drawable/ic_settings"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/secondaryText" />
+
     <!-- HEADER: Date, Time, Battery (Text only) -->
     <LinearLayout
         android:id="@+id/headerLayout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="24dp"
         android:paddingTop="48dp"
         android:paddingBottom="16dp"
+        app:layout_constraintEnd_toStartOf="@id/settingsButton"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <!-- Time -->
@@ -65,6 +84,8 @@
         android:layout_marginHorizontal="24dp"
         android:layout_marginTop="16dp"
         android:background="@color/searchBackground"
+        android:drawableStart="@drawable/ic_search"
+        android:drawablePadding="12dp"
         android:fontFamily="sans-serif"
         android:hint="@string/search_hint"
         android:imeOptions="actionSearch"

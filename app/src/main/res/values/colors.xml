@@ -5,6 +5,13 @@
     <color name="primaryText">#E0E0E0</color>          <!-- Light Grey -->
     <color name="secondaryText">#808080</color>        <!-- Dim Grey -->
     <color name="accent">#404040</color>               <!-- Dark Grey (selection) -->
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Premium Minimalist Palette -->
+    <color name="minimalist_background">#0E0F12</color> <!-- Near Black -->
+    <color name="minimalist_text_primary">#F2F2F2</color> <!-- Soft White -->
+    <color name="minimalist_text_secondary">#9A9A9A</color> <!-- Muted Gray -->
+    <color name="minimalist_accent">#708090</color> <!-- Slate Blue/Gray -->
     <color name="divider">#1A1A1A</color>              <!-- Subtle divider -->
     <color name="searchBackground">#0D0D0D</color>     <!-- Slightly lighter than black -->
 </resources>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="bottom"
+    android:orientation="vertical"
+    android:paddingHorizontal="32dp"
+    android:paddingBottom="48dp">
+    
+    <!-- Top Spacer to push content down but keep it in the 60% zone logic handled by ViewPager constraints essentially. 
+         Actually, gravity="bottom" in this item aligns it to the bottom of the ViewPager space. 
+         The ViewPager takes top 65% of screen. So this aligns content near the fold. -->
+
+    <!-- Icon: Monoline Vector -->
+    <ImageView
+        android:id="@+id/slideIcon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="32dp"
+        android:alpha="0.8"
+        android:tint="@color/minimalist_text_primary" />
+
+    <!-- Headline: Medium weight, sentence case -->
+    <TextView
+        android:id="@+id/slideTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Headline Text"
+        android:textSize="28sp"
+        android:letterSpacing="-0.02"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="@color/minimalist_text_primary"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Body: Light, airy -->
+    <TextView
+        android:id="@+id/slideDescription"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Description body text goes here."
+        android:textSize="16sp"
+        android:textColor="@color/minimalist_text_secondary"
+        android:lineSpacingExtra="6dp" />
+
+</LinearLayout>

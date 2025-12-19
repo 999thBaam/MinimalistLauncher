@@ -5,6 +5,9 @@
     <!-- Required for Android 11+ to query installed apps -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
     <application
         android:allowBackup="true"
@@ -32,6 +35,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        
+        <activity android:name=".OnboardingActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MinimalistLauncher"/>
     </application>
 
 </manifest>

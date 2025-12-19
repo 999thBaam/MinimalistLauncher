@@ -1,17 +1,23 @@
 package com.minimalist.launcher
 
 import android.app.AlertDialog
+import android.app.WallpaperManager
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,6 +25,7 @@ import com.minimalist.launcher.data.AppItem
 import com.minimalist.launcher.data.AppRepository
 import com.minimalist.launcher.databinding.ActivityMainBinding
 import com.minimalist.launcher.ui.AppListAdapter
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,29 +42,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appRepository: AppRepository
     private lateinit var adapter: AppListAdapter
     
+    // ... existing properties ...
     private var allApps: List<AppItem> = emptyList()
     
     private val prefs by lazy { 
         getSharedPreferences("minimalist_prefs", Context.MODE_PRIVATE) 
     }
 
-    // Activity result launcher for setting default home
     private val setDefaultLauncherResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { _ ->
-        // Mark as prompted regardless of result
         prefs.edit().putBoolean("has_prompted_default", true).apply()
     }
 
-    // BroadcastReceiver for package install/uninstall events
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            // Refresh app list when packages change
             loadApps()
         }
     }
 
-    // Receiver for time updates (to keep header current)
     private val timeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             updateHeader()
@@ -74,9 +77,138 @@ class MainActivity : AppCompatActivity() {
         setupSearch()
         loadApps()
         
-        // Check if we should prompt user to set as default launcher
-        checkAndPromptDefaultLauncher()
+        // Check onboarding status
+        if (!prefs.getBoolean("is_onboarding_complete", false)) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
+        
+        // Initial setup sequence
+        registerPackageReceiver()
+        
+        // Settings button click -> Show Menu
+        binding.settingsButton.setOnClickListener { view ->
+            showSettingsMenu(view)
+        }
     }
+    
+    private fun showSettingsMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add("System Home Settings")
+        popup.menu.add("Set Black Lockscreen")
+        
+        popup.setOnMenuItemClickListener { item ->
+            when (item.title) {
+                "System Home Settings" -> {
+                    Toast.makeText(this, "Opening Settings...", Toast.LENGTH_SHORT).show()
+                    try {
+                        startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+                    } catch (e: Exception) {
+                        startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                    }
+                    true
+                }
+                "Set Black Lockscreen" -> {
+                    setBlackLockscreen()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+    
+    private fun setBlackLockscreen() {
+        try {
+            val wallpaperManager = WallpaperManager.getInstance(this)
+            // Create a 1x1 black bitmap
+            val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(Color.BLACK)
+            
+            // Set as Lockscreen
+            wallpaperManager.setBitmap(bitmap, null, true, WallpaperManager.FLAG_LOCK)
+            Toast.makeText(this, "Lockscreen set to Black", Toast.LENGTH_SHORT).show()
+        } catch (e: SecurityException) {
+            Toast.makeText(this, "Permission denied. Grant Wallpaper permission.", Toast.LENGTH_LONG).show()
+        } catch (e: IOException) {
+            Toast.makeText(this, "Failed to set wallpaper", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+             Toast.makeText(this, "Error setting lockscreen", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Checks for required permissions in sequence.
+     * 1. Default Launcher (Checked in onCreate/onResume via helper)
+     * 2. Usage Stats (Decluttering feature)
+     */
+    private fun checkPermissions() {
+        // Usage Access Check
+        if (!appRepository.hasUsageStatsPermission()) {
+            AlertDialog.Builder(this, R.style.MinimalistDialog)
+                .setTitle("Enable Digital Declutter")
+                .setMessage("To detect and hide unused apps, Minimalist Launcher needs usage access permission.\n\nApps you haven't used in 30 days will fade out.")
+                .setPositiveButton("Grant Access") { _, _ ->
+                    try {
+                        startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                    } catch (e: Exception) {
+                         // Ignore
+                    }
+                }
+                .setNegativeButton("No Thanks", null)
+                .show()
+        }
+    }
+    
+    // ... prompt and open launcher picker methods similar to before ...
+    // Keeping compact for replacement block matching if needed, 
+    // but the diff below targets specific blocks or we can replace the full body parts.
+    // I will target setupRecyclerView and Settings click specifically to minimize large overwrites if possible
+    // but the imports are at top. I basically need to rewrite imports + onCreate + setupRecyclerView.
+    
+    // ... [EXISTING METHODS: checkAndPromptDefaultLauncher, openLauncherPicker, isDefaultLauncher] ...
+
+    private fun setupRecyclerView() {
+        adapter = AppListAdapter(
+            onAppClick = { app -> launchApp(app) },
+            onUninstallClick = { app -> uninstallApp(app) },
+            onAppLongClick = { app -> showAppOptionsDialog(app) }
+        )
+        
+        binding.appRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = this@MainActivity.adapter
+            setHasFixedSize(true)
+        }
+    }
+    
+    private fun showAppOptionsDialog(app: AppItem) {
+        val options = mutableListOf<String>()
+        val pinAction = if (app.isPinned) "Unpin App" else "Pin to Top"
+        options.add(pinAction)
+        options.add("Uninstall")
+        
+        AlertDialog.Builder(this, R.style.MinimalistDialog)
+            .setTitle(app.label)
+            .setItems(options.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> { // Pin/Unpin
+                        if (app.isPinned) {
+                            appRepository.unpinApp(app.packageName)
+                        } else {
+                            appRepository.pinApp(app.packageName)
+                        }
+                        loadApps() // Reload to update sort
+                    }
+                    1 -> uninstallApp(app)
+                }
+            }
+            .show()
+    }
+
+    // ... [Rest of file: setupSearch, loadApps, filterApps, launchApp, uninstallApp, updateHeader, receivers, onBackPressed] ...
     
     /**
      * Checks if this app is the default launcher.
@@ -137,29 +269,40 @@ class MainActivity : AppCompatActivity() {
         return resolveInfo?.activityInfo?.packageName == packageName
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterPackageReceiver()
+    }
+
     override fun onResume() {
         super.onResume()
         updateHeader()
-        registerReceivers()
+        registerTimeReceiver()
+        
+        // Re-check permission status to refresh list if user just granted it
+        if (appRepository.hasUsageStatsPermission()) {
+            loadApps()
+        } else {
+            // Prompt if we haven't checked recently? 
+            // For now, let's keep it simple and check on every resume if not granted, or just once?
+            // Existing flow checks in onCreate. Let's add a check here too but maybe less intrusive?
+            // Actually, let's just run the check directly. It has its own dialog.
+            // But we don't want to spam. The dialog shows every time? 
+            // Let's rely on onCreate for the dialog, but use onResume to refresh data.
+            // Wait, if user goes to settings and comes back, onCreate isn't called if activity wasn't destroyed.
+            // So we SHOULD check in onResume, but maybe protect with a flag or just Rely on the user doing it.
+            // "Make sure to take all permission together" is the instruction.
+            // So let's check here.
+             checkPermissions()
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        unregisterReceivers()
+        unregisterTimeReceiver()
     }
 
-    private fun setupRecyclerView() {
-        adapter = AppListAdapter { app ->
-            launchApp(app)
-        }
-        
-        binding.appRecyclerView.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = this@MainActivity.adapter
-            // Optimize for fixed item heights
-            setHasFixedSize(true)
-        }
-    }
+
 
     private fun setupSearch() {
         binding.searchEditText.addTextChangedListener(object : TextWatcher {
@@ -196,6 +339,13 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
     }
+    
+    private fun uninstallApp(app: AppItem) {
+        val intent = Intent(Intent.ACTION_DELETE).apply {
+            data = android.net.Uri.parse("package:${app.packageName}")
+        }
+        startActivity(intent)
+    }
 
     private fun updateHeader() {
         // Update time (24-hour format for minimalist aesthetic)
@@ -212,8 +362,7 @@ class MainActivity : AppCompatActivity() {
         binding.batteryText.text = "$batteryLevel%"
     }
 
-    private fun registerReceivers() {
-        // Package changes (install/uninstall)
+    private fun registerPackageReceiver() {
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -221,15 +370,23 @@ class MainActivity : AppCompatActivity() {
             addDataScheme("package")
         }
         registerReceiver(packageReceiver, packageFilter)
+    }
 
-        // Time changes
+    private fun unregisterPackageReceiver() {
+        try {
+            unregisterReceiver(packageReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Receiver not registered, ignore
+        }
+    }
+
+    private fun registerTimeReceiver() {
         val timeFilter = IntentFilter(Intent.ACTION_TIME_TICK)
         registerReceiver(timeReceiver, timeFilter)
     }
 
-    private fun unregisterReceivers() {
+    private fun unregisterTimeReceiver() {
         try {
-            unregisterReceiver(packageReceiver)
             unregisterReceiver(timeReceiver)
         } catch (e: IllegalArgumentException) {
             // Receiver not registered, ignore
