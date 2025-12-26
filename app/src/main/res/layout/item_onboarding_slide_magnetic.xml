@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    First onboarding slide with MagneticGridView animation.
+    The grid squares fly from corners and snap together.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="bottom"
+    android:orientation="vertical"
+    android:paddingHorizontal="32dp"
+    android:paddingBottom="48dp">
+
+    <!-- Magnetic Grid Icon (animated squares) -->
+    <com.minimalist.launcher.ui.MagneticGridView
+        android:id="@+id/magneticGridIcon"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Headline: Medium weight, sentence case -->
+    <TextView
+        android:id="@+id/slideTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Reduce visual noise"
+        android:textSize="28sp"
+        android:letterSpacing="-0.02"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="@color/minimalist_text_primary"
+        android:layout_marginBottom="16dp"
+        android:alpha="0" />
+
+    <!-- Body: Light, airy -->
+    <TextView
+        android:id="@+id/slideDescription"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bright colors trigger dopamine. We use a grayscale, text-only design to restore your focus."
+        android:textSize="16sp"
+        android:textColor="@color/minimalist_text_secondary"
+        android:lineSpacingExtra="6dp"
+        android:alpha="0" />
+
+</LinearLayout>

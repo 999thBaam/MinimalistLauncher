@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    Pin Demo onboarding slide.
+    Shows the Maglev Shift animation demonstrating pinning.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:background="@color/background">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/slideTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pin what matters"
+        android:textSize="28sp"
+        android:letterSpacing="-0.02"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="@color/minimalist_text_primary"
+        android:layout_marginBottom="24dp"
+        android:alpha="0" />
+
+    <!-- Pin Demo Animation -->
+    <com.minimalist.launcher.ui.PinDemoView
+        android:id="@+id/pinDemoView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <!-- Minimal instruction -->
+    <TextView
+        android:id="@+id/slideDescription"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Long press → Pin to top"
+        android:textSize="16sp"
+        android:textColor="@color/minimalist_text_secondary"
+        android:textAlignment="center"
+        android:alpha="0" />
+
+</LinearLayout>

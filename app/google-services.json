@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "172417827494",
+    "project_id": "blank-8877a",
+    "storage_bucket": "blank-8877a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172417827494:android:dd483f6ee57ca00ea9aa67",
+        "android_client_info": {
+          "package_name": "com.minimalist.launcher"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBryA1V6tkJxOJteZtqjX5099KJTfXJkMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

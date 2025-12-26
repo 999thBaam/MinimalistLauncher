@@ -72,10 +72,9 @@ class AppRepository(private val context: Context) {
             }
             // Remove duplicates (some apps register multiple activities)
             .distinctBy { it.packageName }
-            // Sort: Pinned (desc), Last Used (desc), Label (asc)
+            // Sort: Pinned (desc), Label (asc)
             .sortedWith(
                 compareByDescending<AppItem> { it.isPinned }
-                    .thenByDescending { it.lastUsedTime }
                     .thenBy { it.label.lowercase() }
             )
             .toList()

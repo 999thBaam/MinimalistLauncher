@@ -14,4 +14,16 @@
     <color name="minimalist_accent">#708090</color> <!-- Slate Blue/Gray -->
     <color name="divider">#1A1A1A</color>              <!-- Subtle divider -->
     <color name="searchBackground">#0D0D0D</color>     <!-- Slightly lighter than black -->
+    
+    <!-- Bottom-Heavy Launcher Design Tokens -->
+    <color name="flipper_background">#1A1A1A</color>   <!-- Flipper card background -->
+    <color name="flipper_text">#E5E5E5</color>         <!-- Flipper digit text -->
+    <color name="flipper_hinge">#333333</color>        <!-- Hinge parts -->
+    <color name="flipper_divider">#000000</color>      <!-- Center divider line -->
+    <color name="surface_highlight">#14FFFFFF</color>  <!-- 8% white overlay -->
+    <color name="surface_hover">#0DFFFFFF</color>      <!-- 5% white for hover states -->
+    <color name="search_bar_bg">#18181B</color>        <!-- Zinc-900 search bar -->
+    <color name="border_subtle">#1AFFFFFF</color>      <!-- 10% white border -->
+    <color name="icon_circle_bg">#1AFFFFFF</color>     <!-- 10% white icon background -->
+    <color name="dot_indicator">#4B5563</color>        <!-- Gray-600 for colon dots -->
 </resources>

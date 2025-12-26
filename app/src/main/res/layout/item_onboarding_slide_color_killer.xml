@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    "Color Killer" onboarding slide.
+    Shows "True focus has no color." with rainbow word that gets struck through.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:background="@color/background">
+
+    <!-- Color Killer Text Animation -->
+    <com.minimalist.launcher.ui.ColorKillerTextView
+        android:id="@+id/colorKillerText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" />
+
+    <!-- Subtitle that fades in after the kill -->
+    <TextView
+        android:id="@+id/subtitleText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Just text.\nJust intention."
+        android:textSize="18sp"
+        android:textColor="@color/minimalist_text_secondary"
+        android:textAlignment="center"
+        android:lineSpacingExtra="8dp"
+        android:alpha="0" />
+
+</LinearLayout>

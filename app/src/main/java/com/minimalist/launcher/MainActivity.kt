@@ -25,16 +25,24 @@ import com.minimalist.launcher.data.AppItem
 import com.minimalist.launcher.data.AppRepository
 import com.minimalist.launcher.databinding.ActivityMainBinding
 import com.minimalist.launcher.ui.AppListAdapter
-import java.io.IOException
+import android.content.pm.PackageManager
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import com.minimalist.launcher.worker.ReminderWorker
+import android.Manifest
+import androidx.core.app.ActivityCompat
+import java.util.concurrent.TimeUnit
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 /**
  * Minimalist Focus Launcher - Main Activity
  * 
- * "Boring by Design" - Grayscale, text-only app drawer to reduce
- * dopamine-driven impulsive app usage.
+ * "Bottom-Heavy" design with flipper clock header and
+ * bottom-anchored app list for comfortable one-handed use.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -42,7 +50,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appRepository: AppRepository
     private lateinit var adapter: AppListAdapter
     
-    // ... existing properties ...
     private var allApps: List<AppItem> = emptyList()
     
     private val prefs by lazy { 
@@ -77,26 +84,64 @@ class MainActivity : AppCompatActivity() {
         setupSearch()
         loadApps()
         
-        // Check onboarding status
-        if (!prefs.getBoolean("is_onboarding_complete", false)) {
+        // Check auth and onboarding status
+        val isAuthenticated = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null
+        val isOnboardingComplete = prefs.getBoolean("is_onboarding_complete", false)
+        
+        // Flow: Auth -> Onboarding -> Main
+        if (!isAuthenticated) {
+            // Not authenticated - go to phone auth first
+            startActivity(Intent(this, PhoneAuthActivity::class.java))
+            finish()
+            return
+        }
+        
+        if (!isOnboardingComplete) {
+            // Authenticated but onboarding not done
             startActivity(Intent(this, OnboardingActivity::class.java))
             finish()
             return
         }
         
+        // Log launcher opened for analytics
+        com.minimalist.launcher.data.AnalyticsRepository(this).logLauncherOpened()
+        
         // Initial setup sequence
         registerPackageReceiver()
+        setBlackLockscreen()
+        scheduleDailyReminder()
+        requestNotificationPermission()
+        setupFastScroller()
+        
+        // Initial header update
+        updateHeader()
         
         // Settings button click -> Show Menu
         binding.settingsButton.setOnClickListener { view ->
             showSettingsMenu(view)
+        }
+        
+        // Mic button for voice search (optional)
+        binding.micButton.setOnClickListener {
+            launchVoiceSearch()
+        }
+    }
+    
+    private fun launchVoiceSearch() {
+        try {
+            val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, 
+                    android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Voice search not available", Toast.LENGTH_SHORT).show()
         }
     }
     
     private fun showSettingsMenu(anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add("System Home Settings")
-        popup.menu.add("Set Black Lockscreen")
         
         popup.setOnMenuItemClickListener { item ->
             when (item.title) {
@@ -105,12 +150,12 @@ class MainActivity : AppCompatActivity() {
                     try {
                         startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
                     } catch (e: Exception) {
-                        startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                        try {
+                            startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                        } catch (e2: Exception) {
+                            Toast.makeText(this, "Could not open settings", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                    true
-                }
-                "Set Black Lockscreen" -> {
-                    setBlackLockscreen()
                     true
                 }
                 else -> false
@@ -122,30 +167,16 @@ class MainActivity : AppCompatActivity() {
     private fun setBlackLockscreen() {
         try {
             val wallpaperManager = WallpaperManager.getInstance(this)
-            // Create a 1x1 black bitmap
             val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.BLACK)
-            
-            // Set as Lockscreen
             wallpaperManager.setBitmap(bitmap, null, true, WallpaperManager.FLAG_LOCK)
-            Toast.makeText(this, "Lockscreen set to Black", Toast.LENGTH_SHORT).show()
-        } catch (e: SecurityException) {
-            Toast.makeText(this, "Permission denied. Grant Wallpaper permission.", Toast.LENGTH_LONG).show()
-        } catch (e: IOException) {
-            Toast.makeText(this, "Failed to set wallpaper", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-             Toast.makeText(this, "Error setting lockscreen", Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
         }
     }
     
-    /**
-     * Checks for required permissions in sequence.
-     * 1. Default Launcher (Checked in onCreate/onResume via helper)
-     * 2. Usage Stats (Decluttering feature)
-     */
     private fun checkPermissions() {
-        // Usage Access Check
         if (!appRepository.hasUsageStatsPermission()) {
             AlertDialog.Builder(this, R.style.MinimalistDialog)
                 .setTitle("Enable Digital Declutter")
@@ -161,14 +192,6 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
     }
-    
-    // ... prompt and open launcher picker methods similar to before ...
-    // Keeping compact for replacement block matching if needed, 
-    // but the diff below targets specific blocks or we can replace the full body parts.
-    // I will target setupRecyclerView and Settings click specifically to minimize large overwrites if possible
-    // but the imports are at top. I basically need to rewrite imports + onCreate + setupRecyclerView.
-    
-    // ... [EXISTING METHODS: checkAndPromptDefaultLauncher, openLauncherPicker, isDefaultLauncher] ...
 
     private fun setupRecyclerView() {
         adapter = AppListAdapter(
@@ -195,32 +218,30 @@ class MainActivity : AppCompatActivity() {
             .setItems(options.toTypedArray()) { _, which ->
                 when (which) {
                     0 -> { // Pin/Unpin
-                        if (app.isPinned) {
-                            appRepository.unpinApp(app.packageName)
-                        } else {
+                        if (!app.isPinned) {
+                            val pinnedCount = adapter.currentList.count { it.isPinned }
+                            if (pinnedCount >= 3) {
+                                Toast.makeText(this, "Limit 3 pinned apps", Toast.LENGTH_SHORT).show()
+                                return@setItems
+                            }
                             appRepository.pinApp(app.packageName)
+                        } else {
+                            appRepository.unpinApp(app.packageName)
                         }
-                        loadApps() // Reload to update sort
+                        loadApps()
                     }
                     1 -> uninstallApp(app)
                 }
             }
             .show()
     }
-
-    // ... [Rest of file: setupSearch, loadApps, filterApps, launchApp, uninstallApp, updateHeader, receivers, onBackPressed] ...
     
-    /**
-     * Checks if this app is the default launcher.
-     * If not, and we haven't prompted before, show a dialog and open the picker.
-     */
     private fun checkAndPromptDefaultLauncher() {
         if (isDefaultLauncher()) return
         
         val hasPrompted = prefs.getBoolean("has_prompted_default", false)
         if (hasPrompted) return
         
-        // Show explanation dialog, then open launcher picker
         AlertDialog.Builder(this, R.style.MinimalistDialog)
             .setTitle("Set as Home Screen")
             .setMessage("To enable digital minimalism, set this app as your default launcher.\n\nYou can always change this back in Settings.")
@@ -235,12 +256,8 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
     
-    /**
-     * Opens the system launcher picker directly.
-     */
     private fun openLauncherPicker() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10+: Use RoleManager for cleaner UX
             val roleManager = getSystemService(Context.ROLE_SERVICE) as RoleManager
             if (roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
                 val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME)
@@ -249,7 +266,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        // Fallback for older Android: Trigger home intent to show picker
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -258,9 +274,6 @@ class MainActivity : AppCompatActivity() {
         prefs.edit().putBoolean("has_prompted_default", true).apply()
     }
     
-    /**
-     * Checks if this app is currently the default launcher.
-     */
     private fun isDefaultLauncher(): Boolean {
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
@@ -279,20 +292,15 @@ class MainActivity : AppCompatActivity() {
         updateHeader()
         registerTimeReceiver()
         
-        // Re-check permission status to refresh list if user just granted it
-        if (appRepository.hasUsageStatsPermission()) {
-            loadApps()
-        } else {
-            // Prompt if we haven't checked recently? 
-            // For now, let's keep it simple and check on every resume if not granted, or just once?
-            // Existing flow checks in onCreate. Let's add a check here too but maybe less intrusive?
-            // Actually, let's just run the check directly. It has its own dialog.
-            // But we don't want to spam. The dialog shows every time? 
-            // Let's rely on onCreate for the dialog, but use onResume to refresh data.
-            // Wait, if user goes to settings and comes back, onCreate isn't called if activity wasn't destroyed.
-            // So we SHOULD check in onResume, but maybe protect with a flag or just Rely on the user doing it.
-            // "Make sure to take all permission together" is the instruction.
-            // So let's check here.
+        // Clear search query to reset view on return
+        if (binding.searchEditText.text?.isNotEmpty() == true) {
+            binding.searchEditText.text?.clear()
+        }
+        
+        // Always refresh list on resume
+        loadApps()
+        
+        if (!appRepository.hasUsageStatsPermission()) {
              checkPermissions()
         }
     }
@@ -301,8 +309,6 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         unregisterTimeReceiver()
     }
-
-
 
     private fun setupSearch() {
         binding.searchEditText.addTextChangedListener(object : TextWatcher {
@@ -341,22 +347,35 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun uninstallApp(app: AppItem) {
-        val intent = Intent(Intent.ACTION_DELETE).apply {
-            data = android.net.Uri.parse("package:${app.packageName}")
+        Toast.makeText(this, "Opening App Info for ${app.label}", Toast.LENGTH_SHORT).show()
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = android.net.Uri.parse("package:${app.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not open App Info: ${e.message}", Toast.LENGTH_LONG).show()
+            e.printStackTrace()
         }
-        startActivity(intent)
     }
 
     private fun updateHeader() {
-        // Update time (24-hour format for minimalist aesthetic)
+        // Update flipper clock
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        binding.flipperClock.setTime(hour, minute)
+        
+        // Update status bar time (small text)
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        binding.timeText.text = timeFormat.format(Date())
+        binding.statusTimeText.text = timeFormat.format(Date())
 
-        // Update date
-        val dateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
-        binding.dateText.text = dateFormat.format(Date())
+        // Update date (below flipper clock)
+        val dateFormat = SimpleDateFormat("EEEE d", Locale.getDefault())
+        binding.dateText.text = dateFormat.format(Date()).uppercase()
 
-        // Update battery percentage (text only, no icon)
+        // Update battery percentage
         val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         binding.batteryText.text = "$batteryLevel%"
@@ -366,6 +385,7 @@ class MainActivity : AppCompatActivity() {
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
             addAction(Intent.ACTION_PACKAGE_REPLACED)
             addDataScheme("package")
         }
@@ -401,6 +421,52 @@ class MainActivity : AppCompatActivity() {
             binding.searchEditText.text?.clear()
         } else {
             binding.appRecyclerView.smoothScrollToPosition(0)
+        }
+    }
+
+    private fun scheduleDailyReminder() {
+        val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(24, TimeUnit.HOURS)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "DailyReminder",
+            ExistingPeriodicWorkPolicy.KEEP,
+            reminderRequest
+        )
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+    }
+
+    private fun setupFastScroller() {
+        binding.fastScroller.setOnSectionListener { section ->
+            val apps = adapter.currentList
+            var index = -1
+            
+            if (section == "#") {
+                index = 0
+            } else {
+                // Find first app starting with this letter
+                index = apps.indexOfFirst { 
+                    it.label.startsWith(section, ignoreCase = true) 
+                }
+                
+                // If not found, find the insertion point
+                if (index == -1) {
+                    index = apps.indexOfFirst { 
+                        it.label.compareTo(section, ignoreCase = true) > 0 
+                    }
+                }
+            }
+
+            if (index != -1) {
+                (binding.appRecyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(index, 0)
+            }
         }
     }
 }

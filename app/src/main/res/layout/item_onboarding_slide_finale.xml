@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    Blank Mode transition finale slide.
+    Shows dramatic color drain → darkness → button reveal.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- The dramatic transition view handles all phases -->
+    <com.minimalist.launcher.ui.BlankModeTransitionView
+        android:id="@+id/blankModeTransition"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</FrameLayout>
