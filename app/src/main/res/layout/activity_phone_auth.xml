@@ -1,155 +1,178 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Phone Auth layout with phone input and OTP verification -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Phone Auth layout with modern minimalist design -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="32dp"
     android:background="@color/background">
 
-    <!-- Title -->
-    <TextView
-        android:id="@+id/authTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Verify your phone"
-        android:textSize="28sp"
-        android:textColor="@color/minimalist_text_primary"
-        android:fontFamily="sans-serif-medium"
-        android:layout_marginBottom="16dp" />
-
-    <!-- Subtitle -->
-    <TextView
-        android:id="@+id/authSubtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="We need your phone number to sync your progress"
-        android:textSize="14sp"
-        android:textColor="@color/minimalist_text_secondary"
-        android:textAlignment="center"
-        android:layout_marginBottom="48dp" />
-
-    <!-- Phone Number Input Container -->
     <LinearLayout
-        android:id="@+id/phoneInputContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-        android:visibility="visible">
+        android:paddingHorizontal="32dp">
 
-        <!-- Country Code + Phone Number -->
-        <LinearLayout
+        <!-- Spacer for top alignment -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="0.2" />
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/authTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Verify your phone"
+            android:textSize="32sp"
+            android:textColor="@color/minimalist_text_primary"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.02"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Subtitle -->
+        <TextView
+            android:id="@+id/authSubtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:text="We need your phone number to sync your progress"
+            android:textSize="15sp"
+            android:lineSpacingMultiplier="1.3"
+            android:textColor="@color/minimalist_text_secondary"
+            android:layout_marginBottom="48dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="+91"
-                android:textSize="20sp"
-                android:textColor="@color/minimalist_text_primary"
-                android:padding="16dp" />
+        <!-- Phone Number Input Container -->
+        <LinearLayout
+            android:id="@+id/phoneInputContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="visible">
 
-            <EditText
-                android:id="@+id/phoneNumberInput"
-                android:layout_width="0dp"
+            <!-- Phone Number Input -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="Enter phone number"
-                android:inputType="phone"
-                android:textSize="20sp"
-                android:textColor="@color/minimalist_text_primary"
-                android:textColorHint="@color/minimalist_text_secondary"
-                android:backgroundTint="@color/minimalist_text_primary"
-                android:padding="16dp"
-                android:maxLength="10" />
+                android:orientation="horizontal"
+                android:background="@drawable/bg_input_field"
+                android:paddingVertical="4dp"
+                android:paddingHorizontal="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="+91"
+                    android:textSize="18sp"
+                    android:textColor="@color/minimalist_text_secondary"
+                    android:layout_gravity="center_vertical"
+                    android:paddingEnd="12dp" />
+
+                <EditText
+                    android:id="@+id/phoneNumberInput"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:hint="Phone number"
+                    android:inputType="phone"
+                    android:textSize="18sp"
+                    android:textColor="@color/minimalist_text_primary"
+                    android:textColorHint="@color/minimalist_text_secondary"
+                    android:background="@android:color/transparent"
+                    android:maxLength="10" />
+            </LinearLayout>
+
+            <!-- Send OTP Button -->
+            <Button
+                android:id="@+id/sendOtpButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
+                android:text="Continue"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:textAllCaps="false"
+                android:backgroundTint="@android:color/white"
+                android:stateListAnimator="@null" />
+
         </LinearLayout>
 
-        <!-- Send OTP Button -->
-        <Button
-            android:id="@+id/sendOtpButton"
+        <!-- OTP Input Container (Initially Hidden) -->
+        <LinearLayout
+            android:id="@+id/otpInputContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Send OTP"
-            android:textColor="@android:color/black"
-            android:textSize="16sp"
-            android:textAllCaps="false"
-            android:backgroundTint="@android:color/white"
-            android:paddingVertical="16dp" />
+            android:orientation="vertical"
+            android:visibility="gone">
 
-    </LinearLayout>
+            <!-- OTP Input -->
+            <EditText
+                android:id="@+id/otpInput"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:hint="● ● ● ● ● ●"
+                android:inputType="number"
+                android:textSize="28sp"
+                android:textColor="@color/minimalist_text_primary"
+                android:textColorHint="#333333"
+                android:background="@drawable/bg_input_field"
+                android:gravity="center"
+                android:letterSpacing="0.3"
+                android:paddingHorizontal="16dp"
+                android:maxLength="6" />
 
-    <!-- OTP Input Container (Initially Hidden) -->
-    <LinearLayout
-        android:id="@+id/otpInputContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
+            <!-- Verify Button -->
+            <Button
+                android:id="@+id/verifyOtpButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
+                android:text="Verify"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:textAllCaps="false"
+                android:backgroundTint="@android:color/white"
+                android:stateListAnimator="@null" />
 
-        <!-- OTP Input -->
-        <EditText
-            android:id="@+id/otpInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Enter 6-digit OTP"
-            android:inputType="number"
-            android:textSize="24sp"
-            android:textColor="@color/minimalist_text_primary"
-            android:textColorHint="@color/minimalist_text_secondary"
-            android:backgroundTint="@color/minimalist_text_primary"
-            android:gravity="center"
-            android:letterSpacing="0.5"
-            android:padding="16dp"
-            android:maxLength="6" />
+            <!-- Resend OTP -->
+            <TextView
+                android:id="@+id/resendOtpText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:text="Didn't receive code? Resend"
+                android:textColor="@color/minimalist_text_secondary"
+                android:textSize="14sp"
+                android:padding="12dp" />
 
-        <!-- Verify Button -->
-        <Button
-            android:id="@+id/verifyOtpButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Verify"
-            android:textColor="@android:color/black"
-            android:textSize="16sp"
-            android:textAllCaps="false"
-            android:backgroundTint="@android:color/white"
-            android:paddingVertical="16dp" />
+        </LinearLayout>
 
-        <!-- Resend OTP -->
-        <TextView
-            android:id="@+id/resendOtpText"
+        <!-- Loading Indicator -->
+        <ProgressBar
+            android:id="@+id/authProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_marginTop="24dp"
-            android:text="Didn't receive code? Resend"
-            android:textColor="@color/minimalist_text_secondary"
+            android:layout_marginTop="32dp"
+            android:visibility="gone"
+            android:indeterminateTint="@android:color/white" />
+
+        <!-- Error Message -->
+        <TextView
+            android:id="@+id/errorText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="16dp"
+            android:textColor="#FF5252"
             android:textSize="14sp"
-            android:padding="8dp" />
+            android:visibility="gone" />
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
     </LinearLayout>
 
-    <!-- Loading Indicator -->
-    <ProgressBar
-        android:id="@+id/authProgress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:indeterminateTint="@android:color/white" />
-
-    <!-- Error Message -->
-    <TextView
-        android:id="@+id/errorText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:textColor="#FF5252"
-        android:textSize="14sp"
-        android:visibility="gone" />
-
-</LinearLayout>
+</FrameLayout>

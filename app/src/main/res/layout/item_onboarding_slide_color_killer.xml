@@ -18,17 +18,31 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center" />
 
-    <!-- Subtitle that fades in after the kill -->
+    <!-- Explanatory text with styled "dramatically" - fades in after kill -->
+    <!-- 32dp gap from headline per MD3 spacing -->
+    <TextView
+        android:id="@+id/explanationText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:paddingHorizontal="32dp"
+        android:textSize="18sp"
+        android:lineSpacingExtra="8dp"
+        android:textAlignment="center"
+        android:alpha="0" />
+
+    <!-- Motto - the "whisper" at the bottom -->
+    <!-- 48dp gap creates negative space = minimalist feel -->
     <TextView
         android:id="@+id/subtitleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="48dp"
         android:text="Just text.\nJust intention."
-        android:textSize="18sp"
-        android:textColor="@color/minimalist_text_secondary"
+        android:textSize="16sp"
+        android:textColor="#FF606060"
         android:textAlignment="center"
-        android:lineSpacingExtra="8dp"
+        android:lineSpacingExtra="6dp"
         android:alpha="0" />
 
 </LinearLayout>

@@ -11,6 +11,19 @@
     android:paddingHorizontal="16dp"
     android:background="@color/background">
 
+    <!-- Feature Label -->
+    <TextView
+        android:id="@+id/featureLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="FEATURE"
+        android:textSize="11sp"
+        android:letterSpacing="0.15"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="#666666"
+        android:layout_marginBottom="12dp"
+        android:alpha="0" />
+
     <!-- Title -->
     <TextView
         android:id="@+id/slideTitle"
@@ -24,11 +37,13 @@
         android:layout_marginBottom="24dp"
         android:alpha="0" />
 
-    <!-- Pin Demo Animation -->
-    <com.minimalist.launcher.ui.PinDemoView
-        android:id="@+id/pinDemoView"
+    <!-- Real App List for Pinning -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/pinDemoRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:overScrollMode="never" />
 
     <!-- Minimal instruction -->
     <TextView
@@ -36,7 +51,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="Long press → Pin to top"
+        android:text="Tap to pin your favorites"
         android:textSize="16sp"
         android:textColor="@color/minimalist_text_secondary"
         android:textAlignment="center"

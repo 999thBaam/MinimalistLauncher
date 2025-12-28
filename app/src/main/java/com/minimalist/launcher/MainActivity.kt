@@ -125,6 +125,50 @@ class MainActivity : AppCompatActivity() {
         binding.micButton.setOnClickListener {
             launchVoiceSearch()
         }
+        
+        // Pin Tutorial Overlay - show once after onboarding
+        showPinTutorialIfNeeded()
+    }
+    
+    private fun showPinTutorialIfNeeded() {
+        val shouldShowTutorial = prefs.getBoolean("show_pin_tutorial", true)
+        val isOnboardingComplete = prefs.getBoolean("is_onboarding_complete", false)
+        
+        if (shouldShowTutorial && isOnboardingComplete) {
+            val overlay = findViewById<View>(R.id.pinTutorialOverlay)
+            val dismissButton = findViewById<View>(R.id.tutorialDismissButton)
+            
+            overlay?.let {
+                it.visibility = View.VISIBLE
+                it.alpha = 0f
+                it.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .start()
+            }
+            
+            dismissButton?.setOnClickListener {
+                // Auto-pin the first app
+                val firstApp = allApps.firstOrNull()
+                if (firstApp != null && !firstApp.isPinned) {
+                    appRepository.pinApp(firstApp.packageName)
+                    loadApps()
+                    Toast.makeText(this, "📌 ${firstApp.label} pinned!", Toast.LENGTH_SHORT).show()
+                }
+                
+                // Dismiss overlay
+                overlay?.animate()
+                    ?.alpha(0f)
+                    ?.setDuration(200)
+                    ?.withEndAction {
+                        overlay.visibility = View.GONE
+                    }
+                    ?.start()
+                
+                // Never show again
+                prefs.edit().putBoolean("show_pin_tutorial", false).apply()
+            }
+        }
     }
     
     private fun launchVoiceSearch() {
@@ -329,9 +373,17 @@ class MainActivity : AppCompatActivity() {
         val filteredApps = if (query.isBlank()) {
             allApps
         } else {
-            allApps.filter { 
+            // Filter apps that contain the query
+            val matches = allApps.filter { 
                 it.label.contains(query, ignoreCase = true) 
             }
+            
+            // Sort: apps STARTING with query first, then others alphabetically
+            matches.sortedWith(
+                compareByDescending<AppItem> { it.isPinned }
+                    .thenByDescending { it.label.startsWith(query, ignoreCase = true) }
+                    .thenBy { it.label.lowercase() }
+            )
         }
         
         adapter.submitList(filteredApps)
@@ -366,19 +418,10 @@ class MainActivity : AppCompatActivity() {
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
         val minute = calendar.get(Calendar.MINUTE)
         binding.flipperClock.setTime(hour, minute)
-        
-        // Update status bar time (small text)
-        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        binding.statusTimeText.text = timeFormat.format(Date())
 
         // Update date (below flipper clock)
         val dateFormat = SimpleDateFormat("EEEE d", Locale.getDefault())
         binding.dateText.text = dateFormat.format(Date()).uppercase()
-
-        // Update battery percentage
-        val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
-        val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        binding.batteryText.text = "$batteryLevel%"
     }
 
     private fun registerPackageReceiver() {

@@ -47,7 +47,7 @@
             android:id="@+id/nextButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="48dp"
             android:text="Continue"
             android:textAllCaps="false"
             android:textSize="16sp"
@@ -57,23 +57,7 @@
             android:backgroundTint="@color/minimalist_text_primary"
             app:cornerRadius="4dp"
             android:stateListAnimator="@null"
-            app:layout_constraintBottom_toTopOf="@id/skipButton" />
-
-        <!-- Muted Skip Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/skipButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Skip"
-            android:textAllCaps="false"
-            android:textColor="@color/minimalist_text_secondary"
-            android:textSize="14sp"
-            android:background="@android:color/transparent"
-            android:layout_marginBottom="32dp"
-            style="@style/Widget.AppCompat.Button.Borderless"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

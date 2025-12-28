@@ -3,8 +3,14 @@ package com.minimalist.launcher
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,7 +29,6 @@ class OnboardingActivity : AppCompatActivity() {
 
     private lateinit var viewPager: ViewPager2
     private lateinit var nextButton: Button
-    private lateinit var skipButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var adapter: OnboardingAdapter
     private lateinit var appRepository: AppRepository
@@ -48,12 +53,12 @@ class OnboardingActivity : AppCompatActivity() {
         appRepository = AppRepository(this)
         viewPager = findViewById(R.id.onboardingViewPager)
         nextButton = findViewById(R.id.nextButton)
-        skipButton = findViewById(R.id.skipButton)
         progressBar = findViewById(R.id.onboardingProgressBar)
 
         setupViewPager()
         setupNavigation()
     }
+
 
     private fun setupViewPager() {
         val slides = listOf(
@@ -65,24 +70,19 @@ class OnboardingActivity : AppCompatActivity() {
                 null
             ),
             OnboardingSlide(
-                -1,  // Special: PIN_DEMO type
-                "Pin what matters",
-                "Long press → Pin to top",
-                null
-            ),
-            OnboardingSlide(
-                -2,  // Special: DECAY_DEMO type
-                "Stay clean",
-                "Use it or lose it.",
-                "Grant Access"
-            ),
-            OnboardingSlide(
                 R.drawable.ic_onboarding_home,
                 "Make it home",
                 "This only works as your home screen.\n\nOne tap away from focus.",
                 "Set as Default"
             ),
-            // Finale slide - after setting default
+            // Decay Demo - Digital decluttering feature (now position 2)
+            OnboardingSlide(
+                -2,  // Special: DECAY_DEMO type
+                "Digital decluttering",
+                "• White means active\n• Grey means unused\n• Your screen stays calm",
+                "Grant Access"
+            ),
+            // Finale slide (now position 3)
             OnboardingSlide(
                 -3,  // Special: FINALE type
                 "Enter the Blank Mode",
@@ -93,6 +93,9 @@ class OnboardingActivity : AppCompatActivity() {
 
         adapter = OnboardingAdapter(slides, this::onSlideAction)
         viewPager.adapter = adapter
+        
+        // Disable horizontal swipe - navigation only via buttons
+        viewPager.isUserInputEnabled = false
         
         // Subtle fade transformer
         viewPager.setPageTransformer { page, position ->
@@ -147,15 +150,16 @@ class OnboardingActivity : AppCompatActivity() {
             0 -> {
                 // Color Killer slide: Rainbow strikethrough animation
                 val colorKillerText = viewHolder.itemView.findViewById<com.minimalist.launcher.ui.ColorKillerTextView>(R.id.colorKillerText)
+                val explanationText = viewHolder.itemView.findViewById<TextView>(R.id.explanationText)
                 val subtitle = viewHolder.itemView.findViewById<TextView>(R.id.subtitleText)
                 
                 colorKillerText?.playAnimation()
                 
-                // Subtitle fades in after the "kill" (delayed)
-                subtitle?.let { s ->
-                    s.alpha = 0f
-                    s.translationY = 30f
-                    s.animate()
+                // Explanation fades in after the "kill" (delayed)
+                explanationText?.let { e ->
+                    e.alpha = 0f
+                    e.translationY = 20f
+                    e.animate()
                         .alpha(1f)
                         .translationY(0f)
                         .setDuration(600)
@@ -163,52 +167,42 @@ class OnboardingActivity : AppCompatActivity() {
                         .setInterpolator(androidx.interpolator.view.animation.FastOutSlowInInterpolator())
                         .start()
                 }
-            }
-            1 -> {
-                // Pin Demo slide: Maglev Shift animation
-                val pinDemoView = viewHolder.itemView.findViewById<com.minimalist.launcher.ui.PinDemoView>(R.id.pinDemoView)
-                val title = viewHolder.itemView.findViewById<TextView>(R.id.slideTitle)
-                val desc = viewHolder.itemView.findViewById<TextView>(R.id.slideDescription)
                 
-                // Start the looping pinning demo
-                pinDemoView?.startAnimation()
-                
-                // Title fades in first
-                title?.let { t ->
-                    t.alpha = 0f
-                    t.translationY = 30f
-                    t.animate()
+                // Subtitle fades in after explanation
+                subtitle?.let { s ->
+                    s.alpha = 0f
+                    s.translationY = 20f
+                    s.animate()
                         .alpha(1f)
                         .translationY(0f)
-                        .setDuration(400)
-                        .setStartDelay(100)
-                        .setInterpolator(androidx.interpolator.view.animation.FastOutSlowInInterpolator())
-                        .start()
-                }
-                
-                // Description fades in after animation starts
-                desc?.let { d ->
-                    d.alpha = 0f
-                    d.translationY = 30f
-                    d.animate()
-                        .alpha(1f)
-                        .translationY(0f)
-                        .setDuration(400)
-                        .setStartDelay(800)  // After first demo cycle starts
+                        .setDuration(600)
+                        .setStartDelay(2600)  // After explanation appears
                         .setInterpolator(androidx.interpolator.view.animation.FastOutSlowInInterpolator())
                         .start()
                 }
             }
             2 -> {
-                // Decay Demo slide: Ghosting animation
+                // Decay Demo slide: Ghosting animation (now position 2)
                 val decayDemoView = viewHolder.itemView.findViewById<com.minimalist.launcher.ui.AppDecayDemoView>(R.id.decayDemoView)
+                val featureLabel = viewHolder.itemView.findViewById<TextView>(R.id.featureLabel)
                 val title = viewHolder.itemView.findViewById<TextView>(R.id.slideTitle)
                 val desc = viewHolder.itemView.findViewById<TextView>(R.id.slideDescription)
                 
                 // Start the looping decay demo
                 decayDemoView?.startAnimation()
                 
-                // Title fades in first
+                // Feature label fades in first
+                featureLabel?.let { f ->
+                    f.alpha = 0f
+                    f.animate()
+                        .alpha(1f)
+                        .setDuration(300)
+                        .setStartDelay(0)
+                        .setInterpolator(androidx.interpolator.view.animation.FastOutSlowInInterpolator())
+                        .start()
+                }
+                
+                // Title fades in after feature label
                 title?.let { t ->
                     t.alpha = 0f
                     t.translationY = 30f
@@ -216,7 +210,7 @@ class OnboardingActivity : AppCompatActivity() {
                         .alpha(1f)
                         .translationY(0f)
                         .setDuration(400)
-                        .setStartDelay(100)
+                        .setStartDelay(200)
                         .setInterpolator(androidx.interpolator.view.animation.FastOutSlowInInterpolator())
                         .start()
                 }
@@ -234,8 +228,8 @@ class OnboardingActivity : AppCompatActivity() {
                         .start()
                 }
             }
-            4 -> {
-                // FINALE slide: Dramatic 3-phase transition (Drain → Void → Reveal)
+            3 -> {
+                // FINALE slide: Dramatic 3-phase transition (now position 3)
                 val transitionView = viewHolder.itemView.findViewById<com.minimalist.launcher.ui.BlankModeTransitionView>(R.id.blankModeTransition)
                 
                 // Start the dramatic color drain animation
@@ -303,10 +297,6 @@ class OnboardingActivity : AppCompatActivity() {
                 completeOnboarding()
             }
         }
-
-        skipButton.setOnClickListener {
-            completeOnboarding()
-        }
     }
     
     // Check if the permission action is complete
@@ -333,17 +323,14 @@ class OnboardingActivity : AppCompatActivity() {
             // Mandatory Step: Button does the Action
             nextButton.text = slide.actionLabel
             nextButton.visibility = View.VISIBLE
-            skipButton.visibility = View.INVISIBLE // Strict mode: No skipping mandatory setup
         } else {
             // Normal Navigation
             if (position == total - 1) {
-                // FINALE slide: Hide all buttons - only the center button is used
+                // FINALE slide: Hide button - only the center button is used
                 nextButton.visibility = View.GONE
-                skipButton.visibility = View.GONE
             } else {
                 nextButton.text = "Continue"
                 nextButton.visibility = View.VISIBLE
-                skipButton.visibility = View.VISIBLE
             }
         }
     }
@@ -412,7 +399,6 @@ class OnboardingActivity : AppCompatActivity() {
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         
         private val TYPE_COLOR_KILLER = 0
-        private val TYPE_PIN_DEMO = 1
         private val TYPE_DECAY_DEMO = 2
         private val TYPE_FINALE = 3
         private val TYPE_STANDARD = 4
@@ -423,7 +409,6 @@ class OnboardingActivity : AppCompatActivity() {
             val slide = slides[position]
             return when (slide.iconRes) {
                 0 -> TYPE_COLOR_KILLER   // iconRes = 0
-                -1 -> TYPE_PIN_DEMO      // iconRes = -1
                 -2 -> TYPE_DECAY_DEMO    // iconRes = -2
                 -3 -> TYPE_FINALE        // iconRes = -3
                 else -> TYPE_STANDARD
@@ -434,32 +419,42 @@ class OnboardingActivity : AppCompatActivity() {
         inner class ColorKillerViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val colorKillerText: com.minimalist.launcher.ui.ColorKillerTextView = 
                 view.findViewById(R.id.colorKillerText)
+            val explanationText: TextView = view.findViewById(R.id.explanationText)
             val subtitle: TextView = view.findViewById(R.id.subtitleText)
             
             fun bind(slide: OnboardingSlide) {
+                // Build styled explanation text:
+                // "Removing color dramatically increases focus."
+                // "dramatically" is white + semibold, rest is soft gray (MD3 dark mode)
+                val builder = SpannableStringBuilder()
+                val softGray = Color.parseColor("#B0B0B0")  // MD3 secondary text for dark mode
+                val whiteColor = Color.WHITE
+                
+                val part1 = "Removing color "
+                val highlight = "dramatically"
+                val part2 = " increases\nfocus."  // Line break for balanced visual
+                
+                builder.append(part1)
+                builder.setSpan(ForegroundColorSpan(softGray), 0, part1.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                
+                val highlightStart = builder.length
+                builder.append(highlight)
+                builder.setSpan(ForegroundColorSpan(whiteColor), highlightStart, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                builder.setSpan(StyleSpan(Typeface.BOLD), highlightStart, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                
+                builder.append(part2)
+                builder.setSpan(ForegroundColorSpan(softGray), builder.length - part2.length, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                
+                explanationText.text = builder
+                explanationText.alpha = 0f
+                
                 subtitle.text = slide.description
                 subtitle.alpha = 0f
                 colorKillerText.reset()
             }
         }
         
-        // Pin Demo ViewHolder
-        inner class PinDemoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val pinDemoView: com.minimalist.launcher.ui.PinDemoView = 
-                view.findViewById(R.id.pinDemoView)
-            val title: TextView = view.findViewById(R.id.slideTitle)
-            val desc: TextView = view.findViewById(R.id.slideDescription)
-            
-            fun bind(slide: OnboardingSlide) {
-                title.text = slide.title
-                desc.text = slide.description
-                
-                // Reset - animation triggered by onPageSelected
-                title.alpha = 0f
-                desc.alpha = 0f
-                pinDemoView.reset()
-            }
-        }
+
         
         // Decay Demo ViewHolder
         inner class DecayDemoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -540,11 +535,7 @@ class OnboardingActivity : AppCompatActivity() {
                         .inflate(R.layout.item_onboarding_slide_color_killer, parent, false)
                     ColorKillerViewHolder(view)
                 }
-                TYPE_PIN_DEMO -> {
-                    val view = LayoutInflater.from(parent.context)
-                        .inflate(R.layout.item_onboarding_slide_pin_demo, parent, false)
-                    PinDemoViewHolder(view)
-                }
+
                 TYPE_DECAY_DEMO -> {
                     val view = LayoutInflater.from(parent.context)
                         .inflate(R.layout.item_onboarding_slide_decay_demo, parent, false)
@@ -566,7 +557,6 @@ class OnboardingActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (holder) {
                 is ColorKillerViewHolder -> holder.bind(slides[position])
-                is PinDemoViewHolder -> holder.bind(slides[position])
                 is DecayDemoViewHolder -> holder.bind(slides[position])
                 is FinaleViewHolder -> holder.bind(slides[position])
                 is StandardViewHolder -> holder.bind(slides[position])
