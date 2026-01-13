@@ -47,29 +47,32 @@ class FlipperDigitView @JvmOverloads constructor(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.flipper_text)
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        // CHANGED: Use Roboto Light for minimalist look
+        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
     }
+    // Divider paint removed/unused
     private val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK
-        strokeWidth = 2f
+        color = Color.TRANSPARENT 
+        strokeWidth = 0f
     }
     private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    // Hinge paints removed/unused
     private val hingePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.flipper_hinge)
+        color = Color.TRANSPARENT
     }
     private val hingeBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK
+        color = Color.TRANSPARENT
         style = Paint.Style.STROKE
-        strokeWidth = 1f
+        strokeWidth = 0f
     }
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     
-    // Dimensions
+    // ... (Dimensions remain for layout logic) ...
     private val cornerRadius = 6f * resources.displayMetrics.density
     private val hingeWidth = 6f * resources.displayMetrics.density
     private val hingeHeight = 10f * resources.displayMetrics.density
     
-    // Animation - Camera for 3D transforms
+    // ... (Animation props remain) ...
     private val camera = Camera()
     private val matrix = Matrix()
     private var animator: ValueAnimator? = null
@@ -79,7 +82,8 @@ class FlipperDigitView @JvmOverloads constructor(
     private var bottomRect = RectF()
 
     init {
-        backgroundPaint.color = ContextCompat.getColor(context, R.color.flipper_background)
+        // Background color not used anymore (transparent)
+        backgroundPaint.color = Color.TRANSPARENT
         
         // Read custom attributes if provided
         attrs?.let {
@@ -101,19 +105,10 @@ class FlipperDigitView @JvmOverloads constructor(
         topRect.set(cardRect.left, cardRect.top, cardRect.right, centerY)
         bottomRect.set(cardRect.left, centerY, cardRect.right, cardRect.bottom)
         
-        // Set text size based on height
-        textPaint.textSize = h * 0.65f
+        // Set text size based on height - increased slightly for better proportions
+        textPaint.textSize = h * 0.7f
         
-        // Create top highlight gradient
-        highlightPaint.shader = LinearGradient(
-            0f, 0f, 0f, h * 0.5f,
-            intArrayOf(
-                Color.parseColor("#1AFFFFFF"),
-                Color.TRANSPARENT
-            ),
-            floatArrayOf(0f, 1f),
-            Shader.TileMode.CLAMP
-        )
+        // Highlight shader not needed
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -129,25 +124,15 @@ class FlipperDigitView @JvmOverloads constructor(
             drawStaticCard(canvas, w, h, centerY, currentDigit)
         }
         
-        // Draw center divider line (always on top)
-        canvas.drawLine(cardRect.left, centerY, cardRect.right, centerY, dividerPaint)
-        
-        // Draw hinges (always on top)
-        drawHinge(canvas, -hingeWidth / 4, centerY)
-        drawHinge(canvas, w - hingeWidth * 0.75f, centerY)
+        // REMOVED: Divider line
+        // REMOVED: Hinges
     }
     
     private fun drawStaticCard(canvas: Canvas, w: Float, h: Float, centerY: Float, digit: Int) {
-        // Draw main card background
-        canvas.drawRoundRect(cardRect, cornerRadius, cornerRadius, backgroundPaint)
+        // REMOVED: Background card drawing
+        // REMOVED: Top half highlight drawing
         
-        // Draw top half highlight
-        canvas.save()
-        canvas.clipRect(topRect)
-        canvas.drawRoundRect(cardRect, cornerRadius, cornerRadius, highlightPaint)
-        canvas.restore()
-        
-        // Draw digit
+        // Draw digit only
         val textY = h / 2 - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(digit.toString(), w / 2, textY, textPaint)
     }
@@ -164,7 +149,7 @@ class FlipperDigitView @JvmOverloads constructor(
         val rotation = phaseProgress * 90f  // Correct 0-90° per phase
         
         if (isFirstHalf) {
-            // PHASE 1: Top flaps down (shows previous digit leaving)
+            // PHASE 1: Top flaps down
             
             // Draw static bottom half (previous digit)
             canvas.save()
@@ -172,7 +157,7 @@ class FlipperDigitView @JvmOverloads constructor(
             drawStaticCard(canvas, w, h, centerY, previousDigit)
             canvas.restore()
             
-            // Draw static new digit's bottom underneath (will be revealed)
+            // Draw static new digit's bottom underneath
             canvas.save()
             canvas.clipRect(bottomRect)
             drawStaticCard(canvas, w, h, centerY, currentDigit)
@@ -185,7 +170,7 @@ class FlipperDigitView @JvmOverloads constructor(
             camera.getMatrix(matrix)
             camera.restore()
             
-            // Pivot from center of divider
+            // Pivot from center
             matrix.preTranslate(-w / 2f, -centerY)
             matrix.postTranslate(w / 2f, centerY)
             canvas.concat(matrix)
@@ -193,15 +178,12 @@ class FlipperDigitView @JvmOverloads constructor(
             canvas.clipRect(topRect)
             drawStaticCard(canvas, w, h, centerY, previousDigit)
             
-            // Non-linear shadow (strongest near 90°)
-            val shadowAlpha = (sin(Math.toRadians(rotation.toDouble())) * 120).toInt()
-            shadowPaint.color = Color.argb(shadowAlpha, 0, 0, 0)
-            canvas.drawRect(topRect, shadowPaint)
+            // REMOVED: Shadow rect (would look like a box on floating text)
             
             canvas.restore()
             
         } else {
-            // PHASE 2: Bottom flaps up (shows new digit arriving)
+            // PHASE 2: Bottom flaps up
             
             // Draw static top half (new digit)
             canvas.save()
@@ -209,14 +191,14 @@ class FlipperDigitView @JvmOverloads constructor(
             drawStaticCard(canvas, w, h, centerY, currentDigit)
             canvas.restore()
             
-            // Draw rotating bottom half (new digit)
+            // Draw rotating bottom half
             canvas.save()
             camera.save()
-            camera.rotateX(-90f + rotation)  // From -90° to 0°
+            camera.rotateX(-90f + rotation)
             camera.getMatrix(matrix)
             camera.restore()
             
-            // Pivot from center of divider
+            // Pivot from center
             matrix.preTranslate(-w / 2f, -centerY)
             matrix.postTranslate(w / 2f, centerY)
             canvas.concat(matrix)
@@ -224,24 +206,15 @@ class FlipperDigitView @JvmOverloads constructor(
             canvas.clipRect(bottomRect)
             drawStaticCard(canvas, w, h, centerY, currentDigit)
             
-            // Shadow fading out
-            val shadowAlpha = (sin(Math.toRadians((90f - rotation).toDouble())) * 120).toInt()
-            shadowPaint.color = Color.argb(shadowAlpha.coerceIn(0, 120), 0, 0, 0)
-            canvas.drawRect(bottomRect, shadowPaint)
+            // REMOVED: Shadow rect
             
             canvas.restore()
         }
     }
     
+    // Empty stub for hinge
     private fun drawHinge(canvas: Canvas, x: Float, centerY: Float) {
-        val hingeRect = RectF(
-            x,
-            centerY - hingeHeight / 2,
-            x + hingeWidth,
-            centerY + hingeHeight / 2
-        )
-        canvas.drawRoundRect(hingeRect, 2f, 2f, hingePaint)
-        canvas.drawRoundRect(hingeRect, 2f, 2f, hingeBorderPaint)
+        // No-op
     }
 
     /**

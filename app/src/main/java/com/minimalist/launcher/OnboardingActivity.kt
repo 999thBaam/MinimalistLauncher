@@ -41,7 +41,7 @@ class OnboardingActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         // Refresh UI on return
-        adapter.notifyItemChanged(4) // Refresh permission slide
+        adapter.notifyItemChanged(2) // Refresh permission slide (Make it home)
         // Check if we can proceed now
         updateNavigation(viewPager.currentItem, adapter.itemCount)
     }
@@ -69,20 +69,21 @@ class OnboardingActivity : AppCompatActivity() {
                 "Just text.\nJust intention.",
                 null
             ),
-            OnboardingSlide(
-                R.drawable.ic_onboarding_home,
-                "Make it home",
-                "This only works as your home screen.\n\nOne tap away from focus.",
-                "Set as Default"
-            ),
-            // Decay Demo - Digital decluttering feature (now position 2)
+            // Decay Demo - Digital decluttering feature (position 1)
             OnboardingSlide(
                 -2,  // Special: DECAY_DEMO type
                 "Digital decluttering",
                 "• White means active\n• Grey means unused\n• Your screen stays calm",
                 "Grant Access"
             ),
-            // Finale slide (now position 3)
+            // Make it home (position 2 - last permission step)
+            OnboardingSlide(
+                R.drawable.ic_onboarding_home,
+                "Make it home",
+                "This only works as your home screen.\n\nOne tap away from focus.",
+                "Set as Default"
+            ),
+            // Finale slide (position 3)
             OnboardingSlide(
                 -3,  // Special: FINALE type
                 "Enter the Blank Mode",
@@ -181,8 +182,8 @@ class OnboardingActivity : AppCompatActivity() {
                         .start()
                 }
             }
-            2 -> {
-                // Decay Demo slide: Ghosting animation (now position 2)
+            1 -> {
+                // Decay Demo slide: Ghosting animation (position 1)
                 val decayDemoView = viewHolder.itemView.findViewById<com.minimalist.launcher.ui.AppDecayDemoView>(R.id.decayDemoView)
                 val featureLabel = viewHolder.itemView.findViewById<TextView>(R.id.featureLabel)
                 val title = viewHolder.itemView.findViewById<TextView>(R.id.slideTitle)

@@ -17,7 +17,7 @@
     
     <!-- Bottom-Heavy Launcher Design Tokens -->
     <color name="flipper_background">#1A1A1A</color>   <!-- Flipper card background -->
-    <color name="flipper_text">#E5E5E5</color>         <!-- Flipper digit text -->
+    <color name="flipper_text">#FFFFFFFF</color>         <!-- Flipper digit text -->
     <color name="flipper_hinge">#333333</color>        <!-- Hinge parts -->
     <color name="flipper_divider">#000000</color>      <!-- Center divider line -->
     <color name="surface_highlight">#14FFFFFF</color>  <!-- 8% white overlay -->
