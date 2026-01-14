@@ -1,149 +1,156 @@
 package com.minimalist.launcher.service
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 
+/**
+ * SmartNotificationListener: 2-Box Attention Routing
+ * 
+ * Routes all notifications into 2 boxes via NotificationBatchManager.
+ * 
+ * BOX 1: IMPORTANT (VIP, DMs, calls)
+ * BOX 2: UNIMPORTANT (Everything else)
+ * 
+ * Broadcasts updates to UI.
+ */
 class SmartNotificationListener : NotificationListenerService() {
+    
+    companion object {
+        private const val TAG = "AttentionRouter"
+        
+        // Broadcast action for UI updates
+        const val ACTION_NOTIFICATION_STATE_CHANGED = "com.minimalist.launcher.NOTIFICATION_STATE"
+        const val EXTRA_IMPORTANT_COUNT = "important_count"
+        const val EXTRA_UNIMPORTANT_COUNT = "unimportant_count"
+        const val EXTRA_IS_URGENT = "is_urgent"
+    }
     
     override fun onCreate() {
         super.onCreate()
-        // Load the personal model if it exists
         com.minimalist.launcher.ml.TinyPersonalizer.loadModel(this)
+        Log.d(TAG, "2-Box Attention Router initialized")
     }
     
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        // Ignore our own notifications to avoid loops
         if (sbn.packageName == packageName) return
         
-        // Ignore persistent/ongoing notifications (Music, Nav, etc should pass)
-        // Handled by Classifier, but good double check if we want to skip processing entirely
+        val prefs = getSharedPreferences("minimalist_prefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("smart_notifications_enabled", true)) return
         
-        // CHECK USER PREFERENCE
-        val prefs = getSharedPreferences("minimalist_prefs", android.content.Context.MODE_PRIVATE)
-        val isEnabled = prefs.getBoolean("smart_notifications_enabled", true)
+        // Classify
+        val classification = NotificationClassifier.classify(sbn, this)
         
-        // If "Choice" is OFF, let everything pass through normal system
-        if (!isEnabled) return
+        Log.d(TAG, "${sbn.packageName} → important=${classification.isImportant}, urgent=${classification.isUrgent}")
         
-        // Check if important (Calls, Messages, etc)
-        var isImportant = NotificationClassifier.isImportant(sbn)
+        // Store in central manager
+        NotificationBatchManager.addNotification(
+            this, 
+            sbn, 
+            classification.isImportant, 
+            classification.isUrgent
+        )
         
-        // ML OVERRIDE (Personalization)
-        // If Classifier says "Unimportant", ask the Model "Are you sure?"
-        if (!isImportant) {
-            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-            val prediction = com.minimalist.launcher.ml.TinyPersonalizer.predict(
-                sbn.packageName, 
-                sbn.notification.category, 
-                hour
-            )
-            
-            // If Model is very confident (e.g. > 80% chance user opens it), preserve it.
-            if (prediction > 0.8f) {
-                android.util.Log.d("TinyML", "Rescued ${sbn.packageName} from batch! Score: $prediction")
-                isImportant = true
-            }
-        }
-        
-        if (!isImportant) {
-             // Unimportant -> Batch it
-             NotificationBatchManager.addNotification(this, sbn)
-             
-             // Log as Batched
-             logNotification(sbn, true)
-             
-             // SAFETY: Delay cancellation to avoid race conditions on some ROMs
-             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                try { cancelNotification(sbn.key) } catch (e: Exception) {}
-             }, 200) // 200ms breathing room
-             
+        if (classification.isImportant) {
+            handleImportant(sbn, classification.isUrgent)
         } else {
-            // Important -> Check for OTP codes to auto-copy
-            checkForOtp(sbn.notification)
-            
-            // REMOVED: logNotification(sbn, false) 
-            // Reason: Label Leakage. We don't know if user liked it yet.
-            // We only log if they CLICK it (in onNotificationRemoved).
+            handleUnimportant(sbn)
         }
+        
+        broadcastState()
     }
     
-    private fun checkForOtp(notification: android.app.Notification) {
-        val extras = notification.extras
-        val title = extras.getString(android.app.Notification.EXTRA_TITLE) ?: ""
-        val text = extras.getString(android.app.Notification.EXTRA_TEXT) ?: ""
-        val content = "$title $text"
-        
-        // Regex for 4-8 digit codes
-        // Negative lookbehind/ahead for currency ($, ₹, Rs, INR) and "off"
-        val otpKeywords = listOf("code", "otp", "pin", "password", "login", "verification")
-        val hasKeyword = otpKeywords.any { content.contains(it, ignoreCase = true) }
-        
-        if (hasKeyword) {
-            // Regex explanation:
-            // (?<!...) Negative lookbehind for currency symbols (₹, $) or "Rs"
-            // \b Word boundary
-            // \d{4,8}  4 to 8 digits
-            // \b Word boundary
-            // (?!...) Negative lookahead for "%", " off"
-            val otpRegex = Regex("(?<![₹$]|Rs\\.?\\s?)(\\b\\d{4,8}\\b)(?!\\s?%|\\s?off)")
-            val match = otpRegex.find(content)
-            
-            match?.value?.let { otp ->
-                copyToClipboard(otp)
-            }
+    private fun handleImportant(sbn: StatusBarNotification, isUrgent: Boolean) {
+        if (isUrgent) {
+            // Check for OTP to auto-copy
+            checkForOtp(sbn.notification)
         }
+        
+        // Log for ML
+        logNotification(sbn, "important")
+    }
+    
+    private fun handleUnimportant(sbn: StatusBarNotification) {
+        // Log for ML
+        logNotification(sbn, "unimportant")
+        
+        // Cancel the actual notification so it doesn't clutter status bar
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            try {
+                cancelNotification(sbn.key)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to cancel", e)
+            }
+        }, 200)
+    }
+    
+    private fun broadcastState() {
+        val intent = Intent(ACTION_NOTIFICATION_STATE_CHANGED).apply {
+            putExtra(EXTRA_IMPORTANT_COUNT, NotificationBatchManager.getImportantCount())
+            putExtra(EXTRA_UNIMPORTANT_COUNT, NotificationBatchManager.getUnimportantCount())
+            putExtra(EXTRA_IS_URGENT, NotificationBatchManager.hasUrgent())
+            setPackage(packageName)
+        }
+        sendBroadcast(intent)
     }
     
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?, reason: Int) {
-        // True Intent Logging
-        // We only care about user actions, not system cancels.
+        // We generally don't remove from our store on dismissal from system, 
+        // because we might have cancelled it ourselves (unimportant).
+        // Removal logic is handled by UI (when user handles them).
         
+        // However, if user dismisses an IMPORTANT notification from status bar, 
+        // maybe we should clear it from our Important box?
+        // For now, let's keep them in sync only if explicitly handled.
+        
+        // Learn from user actions
         when (reason) {
-            REASON_CLICK -> {
-                // User CLICKED it -> Positive Signal (1.0)
-                // This is the only true "Important" signal.
-                logNotification(sbn, isBatched = false, isClick = true)
-            }
-            REASON_CANCEL, REASON_CANCEL_ALL -> {
-                // User DISMISSED it -> Negative Signal (0.0)
-                // Log as explicit negative.
-                logNotification(sbn, isBatched = false, isClick = false, isDismiss = true)
-            }
-            // Ignore REASON_APP_CANCEL, REASON_LISTENER_CANCEL (our batching), REASON_ERROR, etc.
+            REASON_CLICK -> logNotification(sbn, "clicked")
+            REASON_CANCEL, REASON_CANCEL_ALL -> logNotification(sbn, "dismissed")
         }
     }
     
-    // Updated signature for versatility
-    private fun logNotification(sbn: StatusBarNotification, isBatched: Boolean, isClick: Boolean = false, isDismiss: Boolean = false) {
+    // ════════════════════════════════════════════════════════════════════════
+    // Utilities
+    // ════════════════════════════════════════════════════════════════════════
+    
+    private fun checkForOtp(notification: android.app.Notification) {
+        val extras = notification.extras
+        val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
+        val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
+        val content = "$title $text"
+        
+        val otpKeywords = listOf("code", "otp", "pin", "password", "login", "verification")
+        if (otpKeywords.any { content.contains(it, ignoreCase = true) }) {
+            val otpRegex = Regex("(?<![₹$]|Rs\\.?\\s?)(\\b\\d{4,8}\\b)(?!\\s?%|\\s?off)")
+            otpRegex.find(content)?.value?.let { otp ->
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try {
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OTP", otp))
+                        android.widget.Toast.makeText(this, "OTP Copied: $otp", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {}
+                }
+            }
+        }
+    }
+    
+    private fun logNotification(sbn: StatusBarNotification, action: String) {
         val notif = sbn.notification
         val isOngoing = (notif.flags and android.app.Notification.FLAG_ONGOING_EVENT) != 0
         
-        var action = com.minimalist.launcher.data.NotificationLogger.ACTION_BATCHED
-        if (isClick) action = com.minimalist.launcher.data.NotificationLogger.ACTION_OPENED
-        if (isDismiss) action = com.minimalist.launcher.data.NotificationLogger.ACTION_DISMISSED
-        if (isBatched) action = com.minimalist.launcher.data.NotificationLogger.ACTION_BATCHED
-        
-        // Log it
-        com.minimalist.launcher.data.NotificationLogger.log(
-            this,
-            sbn.packageName,
-            notif.category,
-            isOngoing,
-            action
-        )
-    }
-    private fun copyToClipboard(otp: String) {
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            try {
-                val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("OTP", otp)
-                clipboard.setPrimaryClip(clip)
-                android.widget.Toast.makeText(this, "OTP Copied: $otp", android.widget.Toast.LENGTH_SHORT).show()
-                Log.d("SmartNotif", "OTP Copied: $otp")
-            } catch (e: Exception) {
-                Log.e("SmartNotif", "Clipboard error", e)
-            }
+        val actionCode = when (action) {
+            "clicked" -> com.minimalist.launcher.data.NotificationLogger.ACTION_OPENED
+            "dismissed" -> com.minimalist.launcher.data.NotificationLogger.ACTION_DISMISSED
+            else -> com.minimalist.launcher.data.NotificationLogger.ACTION_BATCHED
         }
+        
+        com.minimalist.launcher.data.NotificationLogger.log(
+            this, sbn.packageName, notif.category, isOngoing, actionCode
+        )
     }
 }

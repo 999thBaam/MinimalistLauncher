@@ -1,78 +1,220 @@
 package com.minimalist.launcher.service
 
+import android.content.Context
 import android.service.notification.StatusBarNotification
 import android.app.Notification
+import android.util.Log
 
+/**
+ * NotificationClassifier: 2-Box Attention Routing
+ * 
+ * Classifies notifications into 2 boxes:
+ * 
+ * BOX 1: IMPORTANT
+ * - VIP senders, DMs, calls, OTP, @mentions
+ * - Urgent: ring + vibrate + glow
+ * - Not urgent: just glow
+ * 
+ * BOX 2: UNIMPORTANT  
+ * - Everything else (nothing dropped)
+ * - User can promote to important
+ * 
+ * CRITICAL: Nothing is ever dropped. User always has access.
+ */
 object NotificationClassifier {
     
-    // Important Categories (Pass-through)
-    private val IMPORTANT_CATEGORIES = setOf(
-        Notification.CATEGORY_CALL,
-        Notification.CATEGORY_MESSAGE,
-        Notification.CATEGORY_ALARM,
-        Notification.CATEGORY_EVENT,
-        Notification.CATEGORY_REMINDER,
-        Notification.CATEGORY_ERROR,
-        Notification.CATEGORY_NAVIGATION
+    private const val TAG = "AttentionRouter"
+    
+    /**
+     * Classification result: which box and urgency level.
+     */
+    data class Classification(
+        val isImportant: Boolean,
+        val isUrgent: Boolean,  // Only applies if isImportant=true
+        val reason: String      // For debugging/learning
     )
     
-    // Unimportant Categories (Batch)
-    private val UNIMPORTANT_CATEGORIES = setOf(
-        Notification.CATEGORY_SOCIAL,
-        Notification.CATEGORY_PROMO,
-        Notification.CATEGORY_RECOMMENDATION
-        // Removed CATEGORY_SERVICE to defer check
-    )
-
-    // Important Packages (Whitelist)
-    private val IMPORTANT_PACKAGES = setOf(
-        "com.google.android.dialer", // Phone
+    // ════════════════════════════════════════════════════════════════════════
+    // Package Rules
+    // ════════════════════════════════════════════════════════════════════════
+    
+    // Always IMPORTANT + URGENT
+    private val URGENT_PACKAGES = setOf(
+        "com.google.android.dialer",
         "com.android.phone",
+        "com.android.mms"
+    )
+    
+    // IMPORTANT (may or may not be urgent)
+    private val MESSAGING_PACKAGES = setOf(
         "com.whatsapp",
         "org.telegram.messenger",
-        "com.google.android.calendar",
-        "com.google.android.apps.messaging", // SMS
-        "com.android.messaging"
+        "com.google.android.apps.messaging",
+        "com.android.messaging",
+        "com.facebook.orca"
     )
     
-    // Unimportant Packages (Blacklist for batching)
-    private val BATCH_PACKAGES = setOf(
+    // Usually UNIMPORTANT
+    private val SOCIAL_PACKAGES = setOf(
         "com.instagram.android",
         "com.facebook.katana",
         "com.twitter.android",
-        "com.zhiliaoapp.musically", // TikTok
+        "com.zhiliaoapp.musically",
         "com.snapchat.android",
         "com.pinterest",
-        "com.linkedin.android"
+        "com.linkedin.android",
+        "com.google.android.youtube",
+        "com.spotify.music",
+        "com.netflix.mediaclient"
     )
     
-    fun isImportant(sbn: StatusBarNotification): Boolean {
-        val notification = sbn.notification
+    /**
+     * Classify a notification.
+     * 
+     * FAIL-OPEN: Any exception → IMPORTANT + URGENT (trust > cleverness)
+     */
+    fun classify(sbn: StatusBarNotification, context: Context): Classification {
+        return try {
+            classifyInternal(sbn, context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Classification failed, fail-open to IMPORTANT+URGENT", e)
+            Classification(isImportant = true, isUrgent = true, reason = "error_fallback")
+        }
+    }
+    
+    private fun classifyInternal(sbn: StatusBarNotification, context: Context): Classification {
         val pkg = sbn.packageName
+        val category = sbn.notification.category
         
-        // 1. Check Explicit Whitelist (Messaging/Phone)
-        if (IMPORTANT_PACKAGES.contains(pkg)) return true
-        
-        // 2. Check Notification Category (Excluding Service)
-        if (notification.category != null) {
-            if (IMPORTANT_CATEGORIES.contains(notification.category)) return true
-            if (UNIMPORTANT_CATEGORIES.contains(notification.category)) return false
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LAYER 1: BREAKTHROUGH PROTOCOL (IMPORTANT + URGENT)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        val breakthrough = BreakthroughDetector.checkBreakthrough(sbn)
+        if (breakthrough == BreakthroughDetector.BreakthroughResult.IMMEDIATE) {
+            return Classification(true, true, "breakthrough")
         }
         
-        // 3. Check for Ongoing/Foreground Service (Important!)
-        val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
-        val isForeground = (notification.flags and Notification.FLAG_FOREGROUND_SERVICE) != 0
-        if (isOngoing || isForeground) return true
-        
-        // 4. Now handle generic Service category if it wasn't flagged as ongoing/foreground
-        if (Notification.CATEGORY_SERVICE == notification.category) {
-            return false // Service without foreground flag -> Unimportant
+        // Calls are IMPORTANT + URGENT
+        if (category == Notification.CATEGORY_CALL) {
+            return Classification(true, true, "call")
         }
         
-        // 5. Blacklist check
-        if (BATCH_PACKAGES.contains(pkg)) return false
+        // OTP/Verification are IMPORTANT + URGENT
+        if (isOtp(sbn)) {
+            return Classification(true, true, "otp")
+        }
         
-        // Default safe
+        // System-critical packages
+        if (pkg in URGENT_PACKAGES) {
+            return Classification(true, true, "urgent_package")
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LAYER 2: VIP DETECTION (IMPORTANT, may be urgent)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        if (VipDetector.isVip(sbn, context)) {
+            val isUrgent = breakthrough == BreakthroughDetector.BreakthroughResult.ELEVATED
+            return Classification(true, isUrgent, "vip")
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LAYER 3: MESSAGING APPS (IMPORTANT, not urgent by default)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        if (pkg in MESSAGING_PACKAGES) {
+            return classifyMessaging(sbn, context)
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LAYER 4: SOCIAL / OTHER (UNIMPORTANT)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        if (pkg in SOCIAL_PACKAGES) {
+            return Classification(false, false, "social")
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LAYER 5: CATEGORY FALLBACK
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        return classifyByCategory(sbn)
+    }
+    
+    private fun classifyMessaging(sbn: StatusBarNotification, context: Context): Classification {
+        val extras = sbn.notification.extras
+        val conversationTitle = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        
+        val isGroup = conversationTitle != null
+        
+        if (isGroup) {
+            // Group: @mention = IMPORTANT
+            if (containsMention(text)) {
+                return Classification(true, false, "group_mention")
+            }
+            if (VipDetector.hasGroupAuthority(sbn, context)) {
+                return Classification(true, false, "group_authority")
+            }
+            // Regular group message = UNIMPORTANT
+            return Classification(false, false, "group_message")
+        } else {
+            // DM = IMPORTANT (not urgent)
+            return Classification(true, false, "dm")
+        }
+    }
+    
+    private fun classifyByCategory(sbn: StatusBarNotification): Classification {
+        val category = sbn.notification.category
+        
+        // IMPORTANT categories
+        if (category in listOf(
+            Notification.CATEGORY_CALL,
+            Notification.CATEGORY_ALARM,
+            Notification.CATEGORY_MESSAGE,
+            Notification.CATEGORY_EVENT,
+            Notification.CATEGORY_REMINDER,
+            Notification.CATEGORY_ERROR
+        )) {
+            val isUrgent = category in listOf(
+                Notification.CATEGORY_CALL,
+                Notification.CATEGORY_ALARM,
+                Notification.CATEGORY_ERROR
+            )
+            return Classification(true, isUrgent, "category_important")
+        }
+        
+        // UNIMPORTANT categories
+        if (category in listOf(
+            Notification.CATEGORY_PROMO,
+            Notification.CATEGORY_RECOMMENDATION,
+            Notification.CATEGORY_SOCIAL,
+            Notification.CATEGORY_STATUS,
+            Notification.CATEGORY_SERVICE
+        )) {
+            return Classification(false, false, "category_unimportant")
+        }
+        
+        // Unknown = UNIMPORTANT (user can promote)
+        return Classification(false, false, "unknown")
+    }
+    
+    private fun isOtp(sbn: StatusBarNotification): Boolean {
+        val extras = sbn.notification.extras
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        val content = "$title $text".lowercase()
+        
+        val otpKeywords = listOf("code", "otp", "pin", "password", "verification", "login", "2fa")
+        return otpKeywords.any { content.contains(it) }
+    }
+    
+    private fun containsMention(text: String): Boolean {
+        return text.contains("@") || text.lowercase().contains("mentioned")
+    }
+    
+    // Legacy compatibility
+    @Deprecated("Use classify() with Classification")
+    fun isImportant(sbn: StatusBarNotification): Boolean {
+        val pkg = sbn.packageName
+        if (pkg in URGENT_PACKAGES || pkg in MESSAGING_PACKAGES) return true
+        if (pkg in SOCIAL_PACKAGES) return false
         return true
     }
 }

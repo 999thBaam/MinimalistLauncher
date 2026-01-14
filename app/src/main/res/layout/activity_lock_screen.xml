@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/lockScreenRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <!-- Spacer for status bar area -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+        <!-- Goal Text (tap to edit) -->
+        <TextView
+            android:id="@+id/lockGoalText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans-serif-black"
+            android:gravity="center"
+            android:letterSpacing="0.02"
+            android:padding="12dp"
+            android:textAllCaps="true"
+            android:textColor="@color/primaryText"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            tools:text="IIT BOMBAY CSE" />
+
+        <!-- Countdown -->
+        <TextView
+            android:id="@+id/lockCountdownText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.15"
+            android:textAllCaps="true"
+            android:textColor="@color/secondaryText"
+            android:textSize="16sp"
+            tools:text="124 DAYS LEFT" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="60dp"
+            android:layout_height="2dp"
+            android:layout_marginVertical="32dp"
+            android:background="@color/accent" />
+
+        <!-- Task Section Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.2"
+            android:text="TODAY'S BATTLES"
+            android:textColor="@color/secondaryText"
+            android:textSize="12sp" />
+
+        <!-- Task List -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/lockTaskRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="16dp" />
+
+        <!-- Victory State -->
+        <TextView
+            android:id="@+id/lockVictoryText"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:text="Day Won.\nRest Now. ✓"
+            android:textColor="@color/minimalist_accent"
+            android:textSize="24sp"
+            android:visibility="gone" />
+
+        <!-- Add Task Hint (when empty) -->
+        <TextView
+            android:id="@+id/addTaskHint"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:padding="16dp"
+            android:text="+ Tap to add task"
+            android:textColor="@color/minimalist_accent"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+        <!-- Trophy Room -->
+        <TextView
+            android:id="@+id/lockTrophyText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_trophy_pill"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="10dp"
+            android:textColor="@color/secondaryText"
+            android:textSize="13sp"
+            tools:text="🏆 5 completed" />
+
+        <!-- Dismiss Button -->
+        <TextView
+            android:id="@+id/dismissButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans-serif"
+            android:padding="16dp"
+            android:text="↑ SWIPE UP TO UNLOCK ↑"
+            android:textColor="@color/secondaryText"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</FrameLayout>

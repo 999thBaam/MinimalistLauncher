@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#121212">
+    
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:background="#1E1E1E">
+        
+        <ImageView
+            android:id="@+id/shadow_inbox_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_back_arrow"
+            android:contentDescription="Back"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+        
+        <TextView
+            android:id="@+id/shadow_inbox_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Shadow Inbox"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginStart="16dp" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ghost Mode"
+            android:textColor="#4CAF50"
+            android:textSize="12sp"
+            android:background="@drawable/bg_ghost_mode_badge"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp" />
+    </LinearLayout>
+    
+    <!-- Info banner -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Read without being seen • Swipe to dismiss"
+        android:textColor="#888888"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="#1A1A1A" />
+    
+    <!-- Message list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/shadow_inbox_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp" />
+    
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/shadow_inbox_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="No messages waiting.\nEnjoy the quiet."
+        android:textColor="#666666"
+        android:textSize="16sp"
+        android:visibility="gone" />
+        
+</LinearLayout>

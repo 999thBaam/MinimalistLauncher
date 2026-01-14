@@ -3,4 +3,9 @@
     <string name="app_name">Blank</string>
     <string name="search_hint">Search apps…</string>
     <string name="no_apps_found">No apps found</string>
+    
+    <!-- Gatekeeper -->
+    <string name="gatekeeper_mode">Gatekeeper Mode</string>
+    <string name="gatekeeper_victory">Day Won. Rest Now.</string>
+    <string name="gatekeeper_widget_description">Goal tracker with daily tasks</string>
 </resources>

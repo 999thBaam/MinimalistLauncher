@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_surface"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <!-- Title: "A thought gently surfacing" -->
+    <TextView
+        android:id="@+id/dialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="While you were focused"
+        android:textColor="#F2F2F2"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- Body: "Optional information" -->
+    <TextView
+        android:id="@+id/dialogBody"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Summary details..."
+        android:textColor="#9A9A9A"
+        android:textSize="14sp"
+        android:lineSpacingMultiplier="1.2"
+        android:gravity="center" />
+
+    <!-- Action: "Silence is a feature" -->
+    <TextView
+        android:id="@+id/dialogAction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text="Dismiss"
+        android:textColor="#708090"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true" />
+
+</LinearLayout>
