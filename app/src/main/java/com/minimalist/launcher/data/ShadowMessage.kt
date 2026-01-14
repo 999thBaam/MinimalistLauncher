@@ -53,7 +53,30 @@ data class ShadowMessage(
     /**
      * Group name (if isGroup == true)
      */
-    val groupName: String?
+    /**
+     * Group name (if isGroup == true)
+     */
+    val groupName: String?,
+    
+    /**
+     * Notification Category (for ML logging)
+     */
+    val category: String? = null,
+    
+    /**
+     * Is Ongoing (for ML logging)
+     */
+    val isOngoing: Boolean = false,
+    
+    /**
+     * Is this thread Urgent? (Calls, Breakthroughs, etc)
+     */
+    val isUrgent: Boolean = false,
+    
+    /**
+     * Is this a Messaging App? (True = Ghost Mode Chat UI, False = Card UI)
+     */
+    val isMessaging: Boolean = false
 ) {
     companion object {
         /**

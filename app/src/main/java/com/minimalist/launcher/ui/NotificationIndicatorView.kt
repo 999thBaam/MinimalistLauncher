@@ -120,34 +120,31 @@ class NotificationIndicatorView @JvmOverloads constructor(
                 importantGlowPaint.strokeWidth = 3f
             }
             canvas.drawRoundRect(importantBox, cornerRadius, cornerRadius, importantGlowPaint)
+        } else {
+             // Empty state: Faint outline
+            importantGlowPaint.alpha = 30
+            importantGlowPaint.strokeWidth = 2f
+            canvas.drawRoundRect(importantBox, cornerRadius, cornerRadius, importantGlowPaint)
         }
         
         // Draw UNIMPORTANT box
         canvas.drawRoundRect(unimportantBox, cornerRadius, cornerRadius, boxPaint)
-        canvas.drawRoundRect(unimportantBox, cornerRadius, cornerRadius, unimportantGlowPaint)
-        
-        // Draw badge counts
-        if (importantCount > 0) {
-            canvas.drawText(
-                importantCount.toString(),
-                importantBox.centerX(),
-                importantBox.centerY() + 8f,
-                textPaint
-            )
-        } else {
-            canvas.drawText("!", importantBox.centerX(), importantBox.centerY() + 8f, labelPaint)
-        }
         
         if (unimportantCount > 0) {
-            canvas.drawText(
-                unimportantCount.toString(),
-                unimportantBox.centerX(),
-                unimportantBox.centerY() + 8f,
-                textPaint
-            )
+            unimportantGlowPaint.alpha = 180
+            canvas.drawRoundRect(unimportantBox, cornerRadius, cornerRadius, unimportantGlowPaint)
         } else {
-            canvas.drawText("○", unimportantBox.centerX(), unimportantBox.centerY() + 8f, labelPaint)
+            // Empty state: Faint outline
+            unimportantGlowPaint.alpha = 30
+            canvas.drawRoundRect(unimportantBox, cornerRadius, cornerRadius, unimportantGlowPaint)
         }
+        
+        // Draw Labels (I / NI)
+        val iPaint = if (importantCount > 0) textPaint else labelPaint
+        canvas.drawText("I", importantBox.centerX(), importantBox.centerY() + 8f, iPaint)
+        
+        val niPaint = if (unimportantCount > 0) textPaint else labelPaint
+        canvas.drawText("NI", unimportantBox.centerX(), unimportantBox.centerY() + 8f, niPaint)
     }
     
     override fun onTouchEvent(event: MotionEvent): Boolean {

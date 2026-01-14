@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="16dp"
+    android:background="?attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/vip_icon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:padding="8dp"
+        android:src="@drawable/ic_launcher_foreground"
+        android:background="#F5F5F5"/>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="16dp">
+
+        <TextView
+            android:id="@+id/vip_name"
+            android:text="+1 (555) 123-4567"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+             android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/vip_source"
+            android:text="Manual"
+            android:textSize="12sp"
+            android:textColor="#999999"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/vip_delete"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:padding="8dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        app:tint="#D32F2F"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        xmlns:app="http://schemas.android.com/apk/res-auto"/>
+
+</LinearLayout>

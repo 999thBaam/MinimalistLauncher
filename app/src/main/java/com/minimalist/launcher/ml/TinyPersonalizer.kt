@@ -137,12 +137,17 @@ object TinyPersonalizer {
                         val hour = parts[3].toIntOrNull() ?: 12
                         val labelInt = parts[6].toIntOrNull() ?: 0
                         
-                        // Label: 1.0 is Positive (Open), 0.0 is Negative (Dismiss)
-                        // Map: 0->0.0, 1->1.0, 2->0.3 (Batched is weak negative)
+                        // Label: 1.0 is Positive, 0.0 is Negative
+                        // Map: 
+                        // 0 (Dismissed) -> 0.0
+                        // 1 (Opened) -> 1.0
+                        // 2 (Batched) -> 0.2 (Weak Negative)
+                        // 3 (Promoted) -> 1.0 (Strong Positive)
+                        // 4 (Demoted) -> 0.0 (Strong Negative)
                         val label = when(labelInt) {
-                            1 -> 1.0f // Open
-                            0 -> 0.0f // Dismiss
-                            else -> 0.2f // Batched
+                            1, 3 -> 1.0f 
+                            0, 4 -> 0.0f 
+                            else -> 0.2f 
                         }
                         
                         val features = mutableListOf<String>()

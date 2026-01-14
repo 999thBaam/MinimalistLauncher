@@ -325,15 +325,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     true
                 }
-                toggleTitle -> {
-                    val newState = !isSmartNotifEnabled
-                    prefs.edit().putBoolean("smart_notifications_enabled", newState).apply()
-                    val msg = if (newState) "Smart Focus Enabled 🧠" else "Smart Focus Disabled 🔔"
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-                    
-                    if (newState) {
-                        checkPermissions()
-                    }
+                "Intent Firewall Settings" -> {
+                    startActivity(Intent(this, IntentFirewallSettingsActivity::class.java))
                     true
                 }
                 lockScreenTitle -> {

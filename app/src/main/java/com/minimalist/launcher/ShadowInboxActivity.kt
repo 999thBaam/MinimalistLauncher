@@ -64,7 +64,7 @@ class ShadowInboxActivity : AppCompatActivity() {
         titleView.text = if (showImportantOnly) "Important Messages" else "Notifications"
         
         adapter = ShadowInboxAdapter(
-            messages = mutableListOf(),
+            items = mutableListOf(),
             onItemClick = { message -> showMessageDetail(message) },
             onOpenInApp = { message -> confirmOpenInApp(message) },
             context = this
@@ -76,14 +76,20 @@ class ShadowInboxActivity : AppCompatActivity() {
         // Swipe to dismiss
         val swipeHandler = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) = false
+            
+            override fun getSwipeDirs(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
+                // Disable swipe for headers
+                if (viewHolder is ShadowInboxAdapter.HeaderViewHolder) return 0
+                return super.getSwipeDirs(recyclerView, viewHolder)
+            }
+            
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
-                val message = adapter.getItem(position)
-                message?.let {
-                    NotificationBatchManager.clearThread(it.conversationKey)
-                    // Remove from adapter immediately needed? loadMessages re-fetches.
-                    // But for animation smoothness we might want to remove.
-                    // Actually loadMessages is better to sync.
+                val item = adapter.getItem(position)
+                
+                if (item is ShadowInboxItem.MessageItem) {
+                    val message = item.message
+                    NotificationBatchManager.clearThread(message.conversationKey)
                     loadMessages()
                 }
             }
@@ -101,7 +107,34 @@ class ShadowInboxActivity : AppCompatActivity() {
             NotificationBatchManager.getUnimportantMessages()
         }
         
-        adapter.updateMessages(messages)
+        val items = mutableListOf<ShadowInboxItem>()
+        
+        if (showImportantOnly) {
+            // Partition into Urgent vs Regular
+            val (urgent, regular) = messages.partition { it.isUrgent }
+            
+            if (urgent.isNotEmpty()) {
+                items.add(ShadowInboxItem.HeaderItem("Urgent"))
+                items.addAll(urgent.map { createItem(it) })
+            }
+            
+            if (regular.isNotEmpty()) {
+                // Only show header if we have an Urgent section too, or just always nice to have?
+                // Request said: "top part for urgent and bottom for not urgent"
+                // If we have urgent, we label the bottom "Everything Else" or "Important"
+                if (urgent.isNotEmpty()) {
+                    items.add(ShadowInboxItem.HeaderItem("Everything Else"))
+                }
+                items.addAll(regular.map { createItem(it) })
+            }
+        } else {
+            // Unimportant / regular view
+            if (messages.isNotEmpty()) {
+                items.addAll(messages.map { createItem(it) })
+            }
+        }
+        
+        adapter.updateItems(items)
         
         if (messages.isEmpty()) {
             recyclerView.visibility = View.GONE
@@ -113,6 +146,14 @@ class ShadowInboxActivity : AppCompatActivity() {
         } else {
             recyclerView.visibility = View.VISIBLE
             emptyView.visibility = View.GONE
+        }
+    }
+
+    private fun createItem(msg: ShadowMessage): ShadowInboxItem {
+        return if (msg.isMessaging) {
+            ShadowInboxItem.MessageItem(msg)
+        } else {
+            ShadowInboxItem.NotificationItem(msg)
         }
     }
     
@@ -132,7 +173,23 @@ class ShadowInboxActivity : AppCompatActivity() {
             .setPositiveButton("Open in App") { _, _ -> confirmOpenInApp(message) }
             .setNeutralButton(actionTitle) { _, _ ->
                 // Promote/Demote
-                NotificationBatchManager.moveThread(message.conversationKey, !showImportantOnly)
+                val newIsImportant = !showImportantOnly
+                NotificationBatchManager.moveThread(message.conversationKey, newIsImportant)
+                
+                // Log for ML Training
+                val action = if (newIsImportant) 
+                    com.minimalist.launcher.data.NotificationLogger.ACTION_PROMOTED 
+                else 
+                    com.minimalist.launcher.data.NotificationLogger.ACTION_DEMOTED
+                    
+                com.minimalist.launcher.data.NotificationLogger.log(
+                    this, 
+                    message.packageName, 
+                    message.category, 
+                    message.isOngoing, 
+                    action
+                )
+                
                 loadMessages()
                 android.widget.Toast.makeText(this, 
                     if (showImportantOnly) "Demoted" else "Promoted", 
@@ -174,75 +231,167 @@ class ShadowInboxActivity : AppCompatActivity() {
 }
 
 /**
+ * Sealed class for heterogeneous list items
+ */
+sealed class ShadowInboxItem {
+    data class MessageItem(val message: ShadowMessage) : ShadowInboxItem()
+    data class NotificationItem(val message: ShadowMessage) : ShadowInboxItem()
+    data class HeaderItem(val title: String) : ShadowInboxItem()
+}
+
+/**
  * Adapter for Shadow Inbox RecyclerView
  */
 class ShadowInboxAdapter(
-    private var messages: MutableList<ShadowMessage>,
+    private var items: MutableList<ShadowInboxItem>,
     private val onItemClick: (ShadowMessage) -> Unit,
     private val onOpenInApp: (ShadowMessage) -> Unit,
     private val context: android.content.Context
-) : RecyclerView.Adapter<ShadowInboxAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    companion object {
+        const val TYPE_MESSAGE = 0
+        const val TYPE_HEADER = 1
+        const val TYPE_NOTIFICATION = 2
+    }
+    
+    class MessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val appIcon: ImageView = view.findViewById(R.id.shadow_item_icon)
         val sender: TextView = view.findViewById(R.id.shadow_item_sender)
         val preview: TextView = view.findViewById(R.id.shadow_item_preview)
         val time: TextView = view.findViewById(R.id.shadow_item_time)
         val count: TextView = view.findViewById(R.id.shadow_item_count)
     }
-    
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_shadow_message, parent, false)
-        return ViewHolder(view)
+
+    class NotificationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val appIcon: ImageView = view.findViewById(R.id.card_icon)
+        val title: TextView = view.findViewById(R.id.card_title)
+        val text: TextView = view.findViewById(R.id.card_text)
+        val time: TextView = view.findViewById(R.id.card_time)
     }
     
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val message = messages[position]
-        
+    class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val title: TextView = view.findViewById(R.id.header_title)
+    }
+    
+    override fun getItemViewType(position: Int): Int {
+        return when (items[position]) {
+            is ShadowInboxItem.MessageItem -> TYPE_MESSAGE
+            is ShadowInboxItem.NotificationItem -> TYPE_NOTIFICATION
+            is ShadowInboxItem.HeaderItem -> TYPE_HEADER
+        }
+    }
+    
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            TYPE_HEADER -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_shadow_header, parent, false)
+                HeaderViewHolder(view)
+            }
+            TYPE_NOTIFICATION -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_shadow_notification, parent, false)
+                NotificationViewHolder(view)
+            }
+            else -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_shadow_message, parent, false)
+                MessageViewHolder(view)
+            }
+        }
+    }
+    
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val item = items[position]) {
+            is ShadowInboxItem.HeaderItem -> {
+                (holder as HeaderViewHolder).title.text = item.title
+            }
+            is ShadowInboxItem.MessageItem -> {
+                bindMessage(holder as MessageViewHolder, item.message)
+            }
+            is ShadowInboxItem.NotificationItem -> {
+                bindNotification(holder as NotificationViewHolder, item.message)
+            }
+        }
+    }
+    
+    private fun bindMessage(vh: MessageViewHolder, message: ShadowMessage) {
         // Sender/Group name
-        holder.sender.text = message.senderDisplayName ?: message.groupName ?: "Unknown"
+        vh.sender.text = message.senderDisplayName ?: message.groupName ?: "Unknown"
         
         // Preview (latest message)
         val latestMsg = message.messages.firstOrNull()
-        holder.preview.text = latestMsg?.text ?: ""
+        vh.preview.text = latestMsg?.text ?: ""
         
         // Time
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        holder.time.text = timeFormat.format(Date(message.lastTimestamp))
+        vh.time.text = timeFormat.format(Date(message.lastTimestamp))
         
         // Unread count
         val count = message.messages.size
         if (count > 1) {
-            holder.count.visibility = View.VISIBLE
-            holder.count.text = count.toString()
+            vh.count.visibility = View.VISIBLE
+            vh.count.text = count.toString()
         } else {
-            holder.count.visibility = View.GONE
+            vh.count.visibility = View.GONE
         }
         
         // App icon
-        try {
-            val icon = context.packageManager.getApplicationIcon(message.packageName)
-            holder.appIcon.setImageDrawable(icon)
-        } catch (e: Exception) {
-            holder.appIcon.setImageResource(R.drawable.ic_launcher_foreground)
-        }
+        bindIcon(vh.appIcon, message.packageName)
+        
+        // Urgent visuals? Maybe color tint the card or sender name?
+        // Minimalist design: Urgency is conveyed by position (Header).
+        // But let's add bold or color if strictly needed. 
+        // For now, sorting is enough.
         
         // Click handlers
-        holder.itemView.setOnClickListener { onItemClick(message) }
-        holder.itemView.setOnLongClickListener { 
+        vh.itemView.setOnClickListener { onItemClick(message) }
+        vh.itemView.setOnLongClickListener { 
+            onOpenInApp(message)
+            true
+        }
+    }
+
+    private fun bindNotification(vh: NotificationViewHolder, message: ShadowMessage) {
+        // Title (App Name or Title)
+        vh.title.text = message.senderDisplayName ?: NotificationBatchManager.getAppName(message.packageName, context)
+        
+        // Text
+        val latestMsg = message.messages.firstOrNull()
+        vh.text.text = latestMsg?.text ?: ""
+        
+        // Time
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        vh.time.text = timeFormat.format(Date(message.lastTimestamp))
+        
+        // App icon
+        bindIcon(vh.appIcon, message.packageName)
+        
+        // Click handlers
+        vh.itemView.setOnClickListener { onItemClick(message) }
+        vh.itemView.setOnLongClickListener { 
             onOpenInApp(message)
             true
         }
     }
     
-    override fun getItemCount() = messages.size
+    private fun bindIcon(view: ImageView, packageName: String) {
+        try {
+            val icon = context.packageManager.getApplicationIcon(packageName)
+            view.setImageDrawable(icon)
+        } catch (e: Exception) {
+            view.setImageResource(R.drawable.ic_launcher_foreground)
+        }
+    }
     
-    fun getItem(position: Int): ShadowMessage? = messages.getOrNull(position)
+    override fun getItemCount() = items.size
     
-    fun updateMessages(newMessages: List<ShadowMessage>) {
-        messages.clear()
-        messages.addAll(newMessages)
+    fun getItem(position: Int): ShadowInboxItem? = items.getOrNull(position)
+    
+    fun updateItems(newItems: List<ShadowInboxItem>) {
+        items.clear()
+        items.addAll(newItems)
         notifyDataSetChanged()
     }
 }

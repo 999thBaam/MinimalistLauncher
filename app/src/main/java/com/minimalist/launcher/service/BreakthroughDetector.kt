@@ -3,7 +3,8 @@ package com.minimalist.launcher.service
 import android.app.Notification
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentHashMap // Ensuring this import is present if not already
+import com.minimalist.launcher.service.SenderResolver.SenderKey // Importing the new SenderKey
 
 /**
  * BreakthroughDetector: The Safety Valve
@@ -39,101 +40,8 @@ object BreakthroughDetector {
         "important", "call me", "call back"
     )
     
-    /**
-     * Normalized sender identity to prevent cross-app confusion.
-     * 
-     * CRITICAL: Always include packageName to avoid mixing senders across apps.
-     * - Same phone number from WhatsApp and SMS should be treated separately.
-     */
-    data class SenderKey(
-        val packageName: String,
-        val senderId: String  // Normalized: digits only for phone, lowercase for username
-    ) {
-        companion object {
-            /**
-             * Single utility function for sender normalization.
-             * 
-             * Rules:
-             * - Phone numbers → digits only (E.164-like)
-             * - Usernames → lowercase, trimmed
-             * - Unknown → hash fallback (package + title)
-             */
-            fun fromNotification(sbn: StatusBarNotification): SenderKey {
-                val pkg = sbn.packageName
-                val extras = sbn.notification.extras
-                
-                // Safe extraction of notification extras
-                // Many extras can be non-String types (Person, Parcelable, etc.)
-                val title = safeGetString(extras, Notification.EXTRA_TITLE)
-                val conversationTitle = safeGetString(extras, Notification.EXTRA_CONVERSATION_TITLE)
-                
-                // For messaging-style notifications, try to get sender info safely
-                val senderPerson = safeGetSenderName(extras)
-                
-                // Attempt to identify sender
-                val rawSender = when {
-                    // WhatsApp group: title is group name, sender might be in text
-                    conversationTitle.isNotBlank() -> conversationTitle
-                    senderPerson != null -> senderPerson
-                    title.isNotBlank() -> title
-                    else -> "unknown"
-                }
-                
-                val normalizedId = normalizeSenderId(rawSender)
-                return SenderKey(pkg, normalizedId)
-            }
-            
-            /**
-             * Safely get a String from notification extras.
-             * Handles cases where the value might be CharSequence or other types.
-             */
-            private fun safeGetString(extras: android.os.Bundle, key: String): String {
-                return try {
-                    extras.getCharSequence(key)?.toString() ?: ""
-                } catch (e: Exception) {
-                    ""
-                }
-            }
-            
-            /**
-             * Safely extract sender name from messaging-style notifications.
-             * The "android.messagingUser" extra is a Person object, not a String.
-             */
-            private fun safeGetSenderName(extras: android.os.Bundle): String? {
-                return try {
-                    // Try to get Person object (API 28+)
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                        val person = extras.getParcelable<android.app.Person>("android.messagingUser")
-                        person?.name?.toString()
-                    } else {
-                        null
-                    } ?: extras.getCharSequence("android.selfDisplayName")?.toString()
-                } catch (e: Exception) {
-                    // Silently fail - this is optional data
-                    null
-                }
-            }
-            
-            /**
-             * Normalize sender ID consistently:
-             * - Phone numbers: extract digits only
-             * - Usernames/names: lowercase, trimmed
-             */
-            private fun normalizeSenderId(raw: String): String {
-                val trimmed = raw.trim()
-                
-                // Check if it looks like a phone number (contains mostly digits)
-                val digitsOnly = trimmed.filter { it.isDigit() }
-                if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
-                    // Looks like a phone number
-                    return digitsOnly
-                }
-                
-                // Otherwise treat as username/name
-                return trimmed.lowercase()
-            }
-        }
-    }
+    // NOTE: SenderKey logic moved to SenderResolver
+
     
     /**
      * Check if this notification triggers a breakthrough.
@@ -147,7 +55,7 @@ object BreakthroughDetector {
      * @return BreakthroughResult indicating priority level
      */
     fun checkBreakthrough(sbn: StatusBarNotification): BreakthroughResult {
-        val senderKey = SenderKey.fromNotification(sbn)
+        val senderKey = SenderResolver.resolve(sbn)
         val now = System.currentTimeMillis()
         val isCall = sbn.notification.category == Notification.CATEGORY_CALL
         

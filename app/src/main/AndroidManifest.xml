@@ -114,6 +114,12 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <activity
+            android:name=".IntentFirewallSettingsActivity"
+            android:label="Intent Firewall Settings"
+            android:theme="@style/Theme.MinimalistLauncher"
+            android:exported="false" />
+            
     </application>
 
 </manifest>

@@ -28,6 +28,8 @@ object NotificationLogger {
     const val ACTION_DISMISSED = 0   // User swiped away (Negative)
     const val ACTION_OPENED = 1      // User clicked (Positive)
     const val ACTION_BATCHED = 2     // Auto-batched by rule (Neutral/Weak Negative)
+    const val ACTION_PROMOTED = 3    // User manually promoted (Strong Positive)
+    const val ACTION_DEMOTED = 4     // User manually demoted (Strong Negative)
     
     fun log(context: Context, packageName: String, category: String?, isOngoing: Boolean, actionLabel: Int) {
         executor.execute {
