@@ -87,7 +87,7 @@ class SmartNotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun processNotification(sbn: StatusBarNotification) {
+    private suspend fun processNotification(sbn: StatusBarNotification) {
         // 1. Classify
         val classification = NotificationClassifier.classify(sbn, this)
 

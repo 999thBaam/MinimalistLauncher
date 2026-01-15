@@ -4,6 +4,9 @@ import android.content.Context
 import android.service.notification.StatusBarNotification
 import android.app.Notification
 import android.util.Log
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * NotificationClassifier: 2-Box Attention Routing
@@ -75,12 +78,26 @@ object NotificationClassifier {
         "com.netflix.mediaclient"
     )
     
+    // ════════════════════════════════════════════════════════════════════════
+    // Dependencies
+    // ════════════════════════════════════════════════════════════════════════
+    // Lazy initialized via context
+    private lateinit var intentInterpreter: com.minimalist.launcher.domain.gateway.IntentInterpreter
+    private const val LLM_TIMEOUT_MS = 150L
+    
+    // Request Coalescing / SingleFlight State
+    private val flightMutex = kotlinx.coroutines.sync.Mutex()
+    private val flightMap = mutableMapOf<String, kotlinx.coroutines.Deferred<com.minimalist.launcher.domain.model.IntentPrediction>>()
+
     /**
      * Classify a notification.
      * 
      * FAIL-OPEN: Any exception → IMPORTANT + URGENT (trust > cleverness)
      */
-    fun classify(sbn: StatusBarNotification, context: Context): Classification {
+    suspend fun classify(sbn: StatusBarNotification, context: Context): Classification {
+        if (!::intentInterpreter.isInitialized) {
+            intentInterpreter = com.minimalist.launcher.data.remote.MediaPipeIntentInterpreter(context)
+        }
         return try {
             classifyInternal(sbn, context)
         } catch (e: Exception) {
@@ -89,9 +106,11 @@ object NotificationClassifier {
         }
     }
     
-    private fun classifyInternal(sbn: StatusBarNotification, context: Context): Classification {
+    private suspend fun classifyInternal(sbn: StatusBarNotification, context: Context): Classification {
         val pkg = sbn.packageName
         val category = sbn.notification.category
+        val title = sbn.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val text = sbn.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // LAYER 0: SANITY FILTERS (System Noise & Ecosystem Priority)
@@ -112,9 +131,6 @@ object NotificationClassifier {
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         val isMessaging = isMessagingApp(sbn)
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // LAYER 1: BREAKTHROUGH PROTOCOL (IMPORTANT + URGENT)
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         val breakthrough = BreakthroughDetector.checkBreakthrough(sbn)
         if (breakthrough == BreakthroughDetector.BreakthroughResult.IMMEDIATE) {
             return Classification(true, true, "breakthrough_immediate", isMessaging)
@@ -156,11 +172,69 @@ object NotificationClassifier {
         }
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // LAYER 4: SOCIAL / OTHER (UNIMPORTANT)
+        // LAYER 4: INTENT INTERPRETER (Local LLM)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Trigger for Ambiguous cases (Not explicit Messaging/VIP, not ignored)
+        
+        // Implementation: Check Cache first.
+        val cacheKey = "$pkg::$title" // Use same key logic as Cache internally or let Cache handle it? 
+        // IntentCache handles normalization. We just pass raw.
+        
+        val cachedIntent = com.minimalist.launcher.data.local.IntentCache.get(context, pkg, title)
+        
+        if (cachedIntent != null) {
+            return mapIntentResult(cachedIntent)
+        }
+        
+        // Not cached. Infer Intent.
+        
+        try {
+            // Request Coalescing (SingleFlight)
+            // Prevent Cache Stampede by holding a map of in-flight jobs.
+            
+            val predictionDeferred = kotlinx.coroutines.coroutineScope {
+                importKotlinxSync() // Helper invocation not needed if imports work, assuming full qualified names or existing
+                
+                flightMutex.lock()
+                try {
+                    flightMap.getOrPut(cacheKey) {
+                        async {
+                            try {
+                                // Timeout-guarded Inference
+                                val prediction = kotlinx.coroutines.withTimeout(LLM_TIMEOUT_MS) {
+                                    intentInterpreter.classify(pkg, title, text)
+                                }
+                                
+                                // Cache the result (Async write)
+                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                                    com.minimalist.launcher.data.local.IntentCache.put(context, pkg, title, prediction.type)
+                                }
+                                
+                                prediction
+                            } finally {
+                                // Remove self from flight map
+                                flightMutex.withLock {
+                                    flightMap.remove(cacheKey)
+                                }
+                            }
+                        }
+                    }
+                } finally {
+                    if (flightMutex.isLocked) flightMutex.unlock()
+                }
+            }
+            
+            val prediction = predictionDeferred.await()
+            return mapIntentResult(prediction.type)
+            
+        } catch (e: Exception) {
+             // Fallthrough to Layer 5 on timeout/crash
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LAYER 5: SOCIAL / OTHER (UNIMPORTANT)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         if (pkg in SOCIAL_PACKAGES) {
-            // Mentions in social apps (e.g. "mentioned you in a comment") should permeate?
-             // Let's check mentions even for social apps
              if (containsMention(sbn)) {
                  return Classification(true, false, "social_mention", isMessaging)
              }
@@ -168,11 +242,26 @@ object NotificationClassifier {
         }
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // LAYER 5: CATEGORY FALLBACK
+        // LAYER 6: CATEGORY FALLBACK
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         return classifyByCategory(sbn, isMessaging)
     }
     
+    private fun mapIntentResult(type: com.minimalist.launcher.domain.model.IntentType): Classification {
+        return when (type) {
+            com.minimalist.launcher.domain.model.IntentType.MESSAGE -> Classification(true, false, "llm_message", true)
+            com.minimalist.launcher.domain.model.IntentType.STATE -> Classification(true, false, "llm_state", false) // Mapped to Important (Silent) per PRD
+            com.minimalist.launcher.domain.model.IntentType.TASK -> Classification(true, false, "llm_task", false)
+            com.minimalist.launcher.domain.model.IntentType.PROMO -> Classification(false, false, "llm_promo", false)
+            com.minimalist.launcher.domain.model.IntentType.SOCIAL -> Classification(false, false, "llm_social", false)
+        }
+    }
+
+    // Helper just to ensure imports logic is clear (Kotlin requires explicit imports usually)
+    private fun importKotlinxSync() {} 
+    
+    
+    // ... (helper methods like isMessagingApp, classifyMessaging, etc. remain unchanged)
     private fun isMessagingApp(sbn: StatusBarNotification): Boolean {
         if (sbn.packageName in MESSAGING_PACKAGES) return true
         
