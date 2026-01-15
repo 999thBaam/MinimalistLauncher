@@ -87,8 +87,13 @@ class ShadowInboxActivity : AppCompatActivity() {
                 val position = viewHolder.adapterPosition
                 val item = adapter.getItem(position)
                 
-                if (item is ShadowInboxItem.MessageItem) {
-                    val message = item.message
+                val messageToRemove = when (item) {
+                    is ShadowInboxItem.MessageItem -> item.message
+                    is ShadowInboxItem.NotificationItem -> item.message
+                    else -> null
+                }
+                
+                messageToRemove?.let { message ->
                     NotificationBatchManager.clearThread(message.conversationKey)
                     loadMessages()
                 }
