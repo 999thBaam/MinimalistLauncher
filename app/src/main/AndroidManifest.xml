@@ -11,17 +11,6 @@
     
     <!-- Firebase requires internet -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
-    <!-- Lock screen feature -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
-    
-    <!-- Intent Firewall: VIP Detection (optional, graceful fallback) -->
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -48,7 +37,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-        
+
         <!-- Phone Auth Activity - appears before onboarding -->
         <activity android:name=".PhoneAuthActivity"
             android:screenOrientation="portrait"
@@ -57,30 +46,9 @@
         <activity android:name=".OnboardingActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MinimalistLauncher"/>
-        
-        <!-- Gatekeeper Activity - Progressive disclosure task tracker -->
-        <activity android:name=".GatekeeperActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.MinimalistLauncher"/>
-        
-        <!-- Lock Screen Activity - Shows over system lock screen -->
-        <activity 
-            android:name=".LockScreenActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.MinimalistLauncher"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance"
-            android:showOnLockScreen="true"
-            android:turnScreenOn="true"
-            android:showWhenLocked="true" />
-        
-        <!-- Shadow Inbox - Ghost Mode message reader -->
-        <activity 
-            android:name=".ShadowInboxActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.MinimalistLauncher" />
             
-        <service android:name=".service.SmartNotificationListener"
+        <!-- Minimalist Notification Listener -->
+        <service android:name=".service.MinimalistNotificationListener"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
@@ -88,38 +56,13 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
-        
-        <!-- Gatekeeper Widget -->
-        <receiver
-            android:name=".widget.GatekeeperWidgetProvider"
-            android:exported="true"
-            android:label="Gatekeeper">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.minimalist.launcher.TOGGLE_TASK" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/gatekeeper_widget_info" />
-        </receiver>
-        
-        <!-- Screen On/Off Receiver for custom lock screen -->
-        <receiver
-            android:name=".service.ScreenReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.SCREEN_ON" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-        <activity
-            android:name=".IntentFirewallSettingsActivity"
-            android:label="Intent Firewall Settings"
+
+        <!-- Notification Center (Drawer) -->
+        <activity android:name=".ui.notifications.NotificationCenterActivity"
             android:theme="@style/Theme.MinimalistLauncher"
-            android:exported="false" />
-            
+            android:screenOrientation="portrait"
+            android:launchMode="singleTop" />
+
     </application>
 
 </manifest>

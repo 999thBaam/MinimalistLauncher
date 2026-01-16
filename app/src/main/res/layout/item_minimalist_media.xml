@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingVertical="20dp"
+    android:paddingHorizontal="4dp"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Album Art (Grayscale via Code) -->
+    <ImageView
+        android:id="@+id/albumArt"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:background="#222222"
+        android:scaleType="centerCrop"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:src="@android:drawable/ic_media_play" />
+
+    <!-- Track Info -->
+    <TextView
+        android:id="@+id/trackTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="sans-serif-black"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        tools:text="Pink Moon"
+        app:layout_constraintStart_toEndOf="@id/albumArt"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/albumArt"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintBottom_toTopOf="@id/trackArtist" />
+
+    <TextView
+        android:id="@+id/trackArtist"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="4dp"
+        android:fontFamily="sans-serif-light"
+        android:textColor="#AAAAAA"
+        android:textSize="14sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        tools:text="Nick Drake"
+        app:layout_constraintStart_toEndOf="@id/albumArt"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/trackTitle"
+        app:layout_constraintBottom_toTopOf="@id/mediaControls" />
+
+    <!-- Controls Row -->
+    <LinearLayout
+        android:id="@+id/mediaControls"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toEndOf="@id/albumArt"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/trackArtist"
+        app:layout_constraintBottom_toBottomOf="@id/albumArt">
+        
+        <!-- Controls injected dynamically -->
+        
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

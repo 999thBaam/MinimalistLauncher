@@ -7,20 +7,11 @@
     android:background="@color/background"
     tools:context=".MainActivity">
 
-    <!-- Top gradient overlay (subtle ambient shadow) -->
+    <!-- Custom Top Gradient -->
     <View
         android:layout_width="match_parent"
         android:layout_height="120dp"
         android:background="@drawable/gradient_top_fade" />
-
-    <!-- Notification Indicator: 2 boxes (Important | Unimportant) -->
-    <com.minimalist.launcher.ui.NotificationIndicatorView
-        android:id="@+id/notificationIndicator"
-        android:layout_width="280dp"
-        android:layout_height="100dp"
-        android:layout_gravity="top|start"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp" />
 
 
     <!-- Header Section: Flipper Clock + Date -->

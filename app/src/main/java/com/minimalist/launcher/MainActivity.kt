@@ -44,9 +44,6 @@ import java.util.Locale
 import android.widget.EditText
 import android.widget.LinearLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.minimalist.launcher.data.GatekeeperGoal
-import com.minimalist.launcher.data.GatekeeperRepository
-import com.minimalist.launcher.ui.GatekeeperTaskAdapter
 
 /**
  * Minimalist Focus Launcher - Main Activity
@@ -66,19 +63,8 @@ class MainActivity : AppCompatActivity() {
         getSharedPreferences("minimalist_prefs", Context.MODE_PRIVATE) 
     }
     
-    // Gatekeeper Repository (for lock screen)
-    private lateinit var gatekeeperRepository: GatekeeperRepository
+    // Notification Indicator Receiver - Removed
     
-    // Custom Lock Screen
-    private val screenReceiver = com.minimalist.launcher.service.ScreenReceiver()
-    
-    // Notification Indicator Receiver
-    private val notificationReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            updateNotificationIndicator()
-        }
-    }
-
     private val setDefaultLauncherResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { _ ->
@@ -119,23 +105,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         appRepository = AppRepository(this)
-        gatekeeperRepository = GatekeeperRepository(this)
         
-        // Log analytics
-        com.minimalist.launcher.data.AnalyticsRepository(this).logLauncherOpened()
+        // Log analytics (Disabled to prevent PERMISSION_DENIED logs during dev)
+        // com.minimalist.launcher.data.AnalyticsRepository(this).logLauncherOpened()
 
         setupRecyclerView()
         setupFastScroller()
         setupSearch()
-        
-        // Setup Notification Indicator
-        binding.notificationIndicator.setOnImportantClickListener {
-             openShadowInbox(true)
-        }
-        
-        binding.notificationIndicator.setOnUnimportantClickListener {
-             openShadowInbox(false)
-        }
         
         // Settings button
         binding.settingsButton.setOnClickListener { view ->
@@ -153,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         // Initial setup
         setBlackLockscreen()
         scheduleDailyReminder()
-        requestNotificationPermission()
+        // requestNotificationPermission() // Removed
         
         // Check if we need to show pin tutorial
         binding.root.post { showPinTutorialIfNeeded() }
@@ -171,21 +147,12 @@ class MainActivity : AppCompatActivity() {
         
         registerReceiver(timeReceiver, IntentFilter(Intent.ACTION_TIME_TICK))
         
-        // Screen receiver for custom lock screen
-        registerReceiver(screenReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
-        
-        // Notification receiver
-        val notifFilter = IntentFilter(com.minimalist.launcher.service.SmartNotificationListener.ACTION_NOTIFICATION_STATE_CHANGED)
-        registerReceiver(notificationReceiver, notifFilter, Context.RECEIVER_EXPORTED)
-        
-        // Update initial state
-        updateNotificationIndicator()
         
         if (!prefs.getBoolean("has_prompted_default", false)) {
             checkAndPromptDefaultLauncher() // Use the correct method name
         }
         
-        // Check permissions logic (Declutter, Notification Access)
+        // Check permissions logic (Declutter)
         checkPermissions()
     }
     
@@ -193,15 +160,6 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         unregisterReceiver(packageReceiver)
         unregisterReceiver(timeReceiver)
-        unregisterReceiver(notificationReceiver)
-    }
-    
-    private fun updateNotificationIndicator() {
-        val important = com.minimalist.launcher.service.NotificationBatchManager.getImportantCount()
-        val unimportant = com.minimalist.launcher.service.NotificationBatchManager.getUnimportantCount()
-        val isUrgent = com.minimalist.launcher.service.NotificationBatchManager.hasUrgent()
-        
-        binding.notificationIndicator.updateState(important, unimportant, isUrgent)
     }
 
 
@@ -297,19 +255,6 @@ class MainActivity : AppCompatActivity() {
         val popup = PopupMenu(this, anchor)
         popup.menu.add("System Home Settings")
         
-        // Smart Notification Toggle
-        val isSmartNotifEnabled = prefs.getBoolean("smart_notifications_enabled", true)
-        val toggleTitle = if (isSmartNotifEnabled) "Disable Smart Focus" else "Enable Smart Focus"
-        popup.menu.add(toggleTitle)
-        
-        // Lock Screen Toggle
-        val isLockScreenEnabled = prefs.getBoolean("gatekeeper_lock_screen_enabled", false)
-        val lockScreenTitle = if (isLockScreenEnabled) "Disable Lock Screen" else "Enable Lock Screen"
-        popup.menu.add(lockScreenTitle)
-        
-        // Gatekeeper Mode
-        popup.menu.add("Gatekeeper Mode")
-        
         popup.setOnMenuItemClickListener { item ->
             when (item.title) {
                 "System Home Settings" -> {
@@ -323,21 +268,6 @@ class MainActivity : AppCompatActivity() {
                             Toast.makeText(this, "Could not open settings", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    true
-                }
-                "Intent Firewall Settings" -> {
-                    startActivity(Intent(this, IntentFirewallSettingsActivity::class.java))
-                    true
-                }
-                lockScreenTitle -> {
-                    val newState = !isLockScreenEnabled
-                    prefs.edit().putBoolean("gatekeeper_lock_screen_enabled", newState).apply()
-                    val msg = if (newState) "Lock Screen Enabled 🔒" else "Lock Screen Disabled 🔓"
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-                    true
-                }
-                "Gatekeeper Mode" -> {
-                    startActivity(Intent(this, GatekeeperActivity::class.java))
                     true
                 }
                 else -> false
@@ -361,7 +291,6 @@ class MainActivity : AppCompatActivity() {
     
     private fun checkPermissions() {
         val usageGranted = appRepository.hasUsageStatsPermission()
-        val notificationListenerGranted = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
         
         if (!usageGranted) {
             AlertDialog.Builder(this, R.style.MinimalistDialog)
@@ -374,19 +303,54 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("No Thanks", null)
                 .show()
-        } else if (!notificationListenerGranted) {
-            // Ask for Notification Access for Smart Notifications
-            AlertDialog.Builder(this, R.style.MinimalistDialog)
-                .setTitle("Enable Smart Notifications")
-                .setMessage("To filter unimportant notifications and batch them, allow Minimalist Launcher to access notifications.\n\nWe sort them locally on your device.")
-                .setPositiveButton("Grant Access") { _, _ ->
-                    try {
-                        startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                    } catch (e: Exception) {}
-                }
-                .setNegativeButton("Later", null)
-                .show()
+        } else {
+            // Check Notification Listener Permission
+            val notifListenerGranted = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+            if (!notifListenerGranted) {
+                AlertDialog.Builder(this, R.style.MinimalistDialog)
+                    .setTitle("Enable Minimalist Notifications")
+                    .setMessage("To display your Bland Notifications, please grant Notification Access.")
+                    .setPositiveButton("Grant Access") { _, _ ->
+                        try {
+                            startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        } catch (e: Exception) {}
+                    }
+                    .setNegativeButton("Later", null)
+                    .show()
+            }
         }
+    }
+    
+    // Gesture Detection for Swipe Down
+    private val gestureDetector by lazy {
+        android.view.GestureDetector(this, object : android.view.GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: android.view.MotionEvent?, e2: android.view.MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 == null) return false
+                val diffY = e2.y - e1.y
+                val diffX = e2.x - e1.x
+                
+                // Detect Swipe Down (Vertical > Horizontal, and downward motion)
+                if (Math.abs(diffY) > Math.abs(diffX) && diffY > 100 && Math.abs(velocityY) > 100) {
+                    // Only open if RecyclerView is at the top (cannot scroll up further)
+                    // or if the touch started in the top area (above the list)
+                    if (!binding.appRecyclerView.canScrollVertically(-1)) {
+                        openNotificationCenter()
+                        return true
+                    }
+                }
+                return false
+            }
+        })
+    }
+    
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {
+        ev?.let { gestureDetector.onTouchEvent(it) }
+        return super.dispatchTouchEvent(ev)
+    }
+    
+    private fun openNotificationCenter() {
+        startActivity(Intent(this, com.minimalist.launcher.ui.notifications.NotificationCenterActivity::class.java))
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 
     private fun setupRecyclerView() {
@@ -402,7 +366,7 @@ class MainActivity : AppCompatActivity() {
             setHasFixedSize(true)
         }
     }
-    
+
     private fun showAppOptionsDialog(app: AppItem) {
         val options = mutableListOf<String>()
         val pinAction = if (app.isPinned) "Unpin App" else "Pin to Top"
@@ -478,8 +442,6 @@ class MainActivity : AppCompatActivity() {
         return resolveInfo?.activityInfo?.packageName == packageName
     }
 
-
-
     private fun setupSearch() {
         binding.searchEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -550,8 +512,6 @@ class MainActivity : AppCompatActivity() {
         binding.dateText.text = dateFormat.format(Date()).uppercase()
     }
 
-
-
     // Override back press to prevent exiting the launcher
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
@@ -566,38 +526,6 @@ class MainActivity : AppCompatActivity() {
     private fun scheduleDailyReminder() {
         // DISABLED: User reported annoyance. Cancelling all reminders for now.
         WorkManager.getInstance(this).cancelUniqueWork("DailyReminder")
-        
-        /* 
-        // For testing: Schedule periodic reminder every 15 minutes (WorkManager minimum)
-        val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES)
-            .build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "DailyReminder",
-            ExistingPeriodicWorkPolicy.REPLACE, // Replace to apply new interval
-            reminderRequest
-        )
-        
-        // Also trigger one immediately for testing
-        val immediateRequest = androidx.work.OneTimeWorkRequestBuilder<ReminderWorker>()
-            .build()
-        WorkManager.getInstance(this).enqueue(immediateRequest)
-        */
-    }
-
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
-            }
-        }
-    }
-
-    private fun openShadowInbox(showImportant: Boolean) {
-        val intent = Intent(this, ShadowInboxActivity::class.java).apply {
-            putExtra("SHOW_IMPORTANT", showImportant)
-        }
-        startActivity(intent)
     }
 
     private fun setupFastScroller() {

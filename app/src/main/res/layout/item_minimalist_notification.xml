@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingVertical="16dp"
+    android:paddingHorizontal="4dp"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Level 1: App Identity (Icon + Name) -->
+    <ImageView
+        android:id="@+id/appIcon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginTop="2dp"
+        tools:src="@android:drawable/sym_def_app_icon"
+        app:tint="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/appName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:letterSpacing="0.05"
+        tools:text="SPOTIFY"
+        app:layout_constraintStart_toEndOf="@id/appIcon"
+        app:layout_constraintTop_toTopOf="@id/appIcon"
+        app:layout_constraintBottom_toBottomOf="@id/appIcon" />
+
+    <!-- Time Context (Right Aligned) -->
+    <TextView
+        android:id="@+id/timeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif"
+        android:textColor="#666666"
+        android:textSize="12sp"
+        tools:text="Now"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBaseline_toBaselineOf="@id/appName" />
+
+    <!-- Level 2: Intent Summary (Title + Text) -->
+    <TextView
+        android:id="@+id/titleText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:fontFamily="sans-serif"
+        android:textColor="#DDDDDD"
+        android:textSize="16sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        tools:text="Now Playing"
+        app:layout_constraintStart_toStartOf="@id/appName"
+        app:layout_constraintEnd_toStartOf="@id/timeText"
+        app:layout_constraintTop_toBottomOf="@id/appName" />
+        
+    <TextView
+        android:id="@+id/contentPreview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontFamily="sans-serif"
+        android:textColor="#999999"
+        android:textSize="14sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        tools:text="Pink Floyd - Time"
+        app:layout_constraintStart_toStartOf="@id/appName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/titleText" />
+
+    <!-- Level 3: Actions & Badges -->
+    <LinearLayout
+        android:id="@+id/metaContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        app:layout_constraintStart_toStartOf="@id/appName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/contentPreview">
+
+        <!-- Primary Action (Single) -->
+        <TextView
+            android:id="@+id/primaryAction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif"
+            android:textColor="#BBBBBB"
+            android:textSize="13sp"
+            android:paddingEnd="12dp"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground"
+            tools:text="Pause" />
+
+        <!-- Intent Badge (Subtle) -->
+        <TextView
+            android:id="@+id/intentBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textColor="#444444"
+            android:textSize="11sp"
+            android:letterSpacing="0.1"
+            tools:text="• STATE" />
+            
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:background="#1AFFFFFF"
+        app:layout_constraintTop_toBottomOf="@id/metaContainer" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
